@@ -10,6 +10,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- HTML5 QRCode Scanner -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Tesseract.js för textigenkänning (OCR) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
         /* Förhindra att man zoomar av misstag på mobilen */
@@ -68,7 +70,7 @@
             </div>
             
             <div class="w-full max-w-sm flex gap-2">
-                <input type="text" id="manual-order-input" placeholder="T.ex. AO-25-1475" class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg font-medium">
+                <input type="text" inputmode="numeric" id="manual-order-input" placeholder="T.ex. 251475" class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg font-medium">
                 <button onclick="setManualOrder()" class="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors">
                     Öppna
                 </button>
@@ -90,14 +92,23 @@
             </div>
 
             <!-- Lägg till del -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0">
-                <button onclick="startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex items-center justify-center gap-3 shadow transition-colors">
-                    <i data-lucide="camera" class="w-6 h-6"></i>
-                    <span class="font-bold text-lg">Skanna Reservdel</span>
-                </button>
+            <div class="flex flex-col gap-3 shrink-0">
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
+                        <i data-lucide="qr-code" class="w-8 h-8"></i>
+                        <span class="font-bold text-sm text-center leading-tight">Skanna<br>QR/Streckkod</span>
+                    </button>
+                    
+                    <button onclick="document.getElementById('ocr-input').click()" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
+                        <i data-lucide="scan-text" class="w-8 h-8"></i>
+                        <span class="font-bold text-sm text-center leading-tight">Läs Text<br>(Fota siffror)</span>
+                    </button>
+                    <!-- Dold input för att öppna kameran för fotografering -->
+                    <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="processOCR(event)">
+                </div>
                 
-                <div class="flex gap-2">
-                    <input type="text" id="manual-part-input" placeholder="Ange artikelnr..." class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg">
+                <div class="flex gap-2 mt-1">
+                    <input type="text" inputmode="numeric" id="manual-part-input" placeholder="Eller ange artikelnr..." class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg">
                     <button onclick="addManualPart()" class="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors">
                         Lägg till
                     </button>
@@ -160,6 +171,34 @@
         </div>
     </div>
 
+    <!-- Bekräftelse Modal (Ta bort artikel) -->
+    <div id="confirm-modal" class="hidden absolute inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all">
+            <div class="flex items-center gap-3 text-red-600 mb-4">
+                <div class="bg-red-100 p-2 rounded-full text-red-600">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3>
+            </div>
+            <p class="text-slate-600 mb-6" id="confirm-modal-text">Är du säker på att du vill ta bort artikeln?</p>
+            <div class="flex gap-3">
+                <button onclick="cancelRemove()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
+                    Avbryt
+                </button>
+                <button onclick="confirmRemove()" class="flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 rounded-xl transition-colors shadow-sm">
+                    Ja, ta bort
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OCR Laddningsskärm -->
+    <div id="ocr-loading" class="hidden absolute inset-0 bg-slate-900/90 z-[60] flex flex-col items-center justify-center text-white backdrop-blur-sm">
+        <i data-lucide="loader-2" class="w-16 h-16 animate-spin text-indigo-400 mb-6"></i>
+        <h3 class="text-2xl font-bold mb-2">Analyserar bild...</h3>
+        <p class="text-slate-300 text-center px-6">AI letar efter artikelnummer i bilden.<br>Detta kan ta ett par sekunder.</p>
+    </div>
+
     <!-- Toast Notis -->
     <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 translate-y-[150%] z-50 flex items-center gap-2 whitespace-nowrap">
         <i data-lucide="info" class="w-5 h-5"></i>
@@ -192,7 +231,7 @@
         // Säker inloggning i bakgrunden
         const initAuth = async () => {
             try {
-                // Vi använder din egen Firebase, så vi använder endast anonym inloggning.
+                // Anonym inloggning för att kunna skriva till databasen
                 await signInAnonymously(auth);
             } catch (err) {
                 console.error("Fel vid inloggning till databasen:", err);
@@ -213,6 +252,7 @@
         let currentOrderNo = null;
         let scannedParts = []; 
         let unsubAdmin = null; // Databas-lyssnare för admin
+        let itemToDelete = null; // Index för artikeln som användaren försöker ta bort
         
         // --- SKANNER-STATE ---
         let html5QrcodeScanner = null;
@@ -236,6 +276,8 @@
         const adminOrdersGrid = document.getElementById('admin-orders-grid');
         const viewToggleBtn = document.getElementById('view-toggle-btn');
         const viewToggleText = document.getElementById('view-toggle-text');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmModalText = document.getElementById('confirm-modal-text');
 
         lucide.createIcons();
 
@@ -359,7 +401,7 @@
             lucide.createIcons();
         }
 
-        // --- ARBETSORDER LOGIK ---
+        // --- ARBETSORDER & RESERVDEL LOGIK ---
 
         async function loadOrder(orderNo) {
             if (!currentUser) {
@@ -416,10 +458,25 @@
             loadOrder(formattedOrder); // Ladda istället för att bara sätta ID
         }
 
-        function addPartToList(partNumber) {
-            if (!partNumber) return;
-            const cleanedPartNo = partNumber.trim().toUpperCase();
+        // --- NY FUNKTION: Tolka komplexa QR-koder (t.ex. {13|1874|1000018|200|MVBF}) ---
+        function parsePartNumber(rawInput) {
+            let text = rawInput.trim();
             
+            if (text.startsWith('{') && text.endsWith('}')) {
+                let innerText = text.substring(1, text.length - 1);
+                let segments = innerText.split('|');
+                
+                if (segments.length >= 3) {
+                    return segments[2].trim(); 
+                }
+            }
+            return text;
+        }
+
+        function addPartToList(rawPartNumber) {
+            if (!rawPartNumber) return;
+            
+            const cleanedPartNo = parsePartNumber(rawPartNumber).toUpperCase();
             const existingPartIndex = scannedParts.findIndex(p => p.partNo === cleanedPartNo);
             
             if (existingPartIndex >= 0) {
@@ -449,14 +506,44 @@
 
         function changeQty(index, delta) {
             const newQty = scannedParts[index].qty + delta;
-            if (newQty > 0) scannedParts[index].qty = newQty;
-            else removePart(index);
-            updateUI();
+            if (newQty > 0) {
+                scannedParts[index].qty = newQty;
+                updateUI();
+            } else {
+                // Om de går under 1 i antal triggar vi samma bekräftelse
+                removePart(index);
+            }
         }
 
+        // --- BEKRÄFTELSE FÖR ATT TA BORT ---
         function removePart(index) {
-            scannedParts.splice(index, 1);
-            updateUI();
+            itemToDelete = index;
+            const part = scannedParts[index];
+            
+            confirmModalText.innerHTML = `Är du säker på att du vill ta bort <strong>${part.partNo}</strong> från listan?`;
+            
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function confirmRemove() {
+            if (itemToDelete !== null) {
+                scannedParts.splice(itemToDelete, 1);
+                itemToDelete = null;
+                updateUI();
+            }
+            closeConfirmModal();
+        }
+
+        function cancelRemove() {
+            itemToDelete = null;
+            closeConfirmModal();
+        }
+
+        function closeConfirmModal() {
+            confirmModal.classList.add('hidden');
+            confirmModal.classList.remove('flex');
         }
 
         function clearOrder() {
@@ -640,7 +727,6 @@
             if (scanMode === 'ORDER') {
                 if(navigator.vibrate) navigator.vibrate(100);
                 stopScanning();
-                // Istället för att bara sätta värdet, hämta ordern!
                 let val = decodedText.trim().toUpperCase();
                 const match = val.replace(/[^A-Z0-9]/g, '').match(/^(?:AO)?(\d{2})(\d+)$/);
                 if (match) val = `AO-${match[1]}-${match[2]}`;
@@ -648,8 +734,49 @@
                 loadOrder(val);
             } 
             else if (scanMode === 'PART') {
+                // Den nya tolkningsfunktionen körs automatiskt inuti addPartToList
                 addPartToList(decodedText);
                 stopScanning(); 
+            }
+        }
+
+        // --- OCR (TEXTIGENKÄNNING) LOGIK ---
+        
+        async function processOCR(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const ocrLoading = document.getElementById('ocr-loading');
+            ocrLoading.classList.remove('hidden');
+            ocrLoading.classList.add('flex');
+            lucide.createIcons();
+            
+            try {
+                // Använd Tesseract.js för att läsa text från bilden (eng är snabbast och bäst på siffror)
+                const worker = await Tesseract.createWorker('eng');
+                const ret = await worker.recognize(file);
+                await worker.terminate();
+                
+                const text = ret.data.text;
+                console.log("Inläst text från bild:", text);
+                
+                // Leta efter ett artikelnummer (vi antar att det är 6 till 8 siffror i rad)
+                // Regex \d{6,8} fångar "1000018" (7 siffror) men hoppar över korta tal som "200" eller "6X50"
+                const matches = text.match(/\b\d{6,8}\b/g);
+                
+                if (matches && matches.length > 0) {
+                    // Vi tar den första träffen som ser ut som ett artikelnummer
+                    addPartToList(matches[0]);
+                } else {
+                    showToast("Hittade inget tydligt artikelnummer (6-8 siffror) i bilden.", "error");
+                }
+            } catch(err) {
+                console.error("Fel vid bildanalys:", err);
+                showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
+            } finally {
+                ocrLoading.classList.add('hidden');
+                ocrLoading.classList.remove('flex');
+                event.target.value = ''; // Återställ inputen så man kan ta ny bild
             }
         }
 
@@ -662,7 +789,10 @@
         window.finishOrder = finishOrder;
         window.changeQty = changeQty;
         window.removePart = removePart;
+        window.confirmRemove = confirmRemove;
+        window.cancelRemove = cancelRemove;
         window.toggleViewMode = toggleViewMode;
+        window.processOCR = processOCR;
 
         updateUI();
 

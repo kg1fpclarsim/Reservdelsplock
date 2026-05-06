@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reservdelsplock</title>
+    <!-- Tailwind CSS för styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Ikoner -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- HTML5 QRCode Scanner (Kräver ingen backend) -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+        /* Förhindra att man zoomar av misstag på mobilen */
+        body {
+            touch-action: pan-y;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Anpassningar för scannerns videoflöde */
+        #reader video {
+            object-fit: cover;
+            border-radius: 0.5rem;
+        }
+        #reader {
+            border: none !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-blue-800 text-white p-4 shadow-md z-10 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <i data-lucide="wrench" class="w-6 h-6"></i>
+            <h1 class="text-xl font-bold tracking-wide">Reservdelsplock</h1>
+        </div>
+        <div id="header-order-badge" class="hidden bg-blue-600 px-3 py-1 rounded-full text-sm font-semibold border border-blue-400">
+            <!-- Fylls i med JS -->
+        </div>
+    </header>
+
+    <!-- Huvudvy -->
+    <main id="main-ui" class="flex-grow p-4 overflow-y-auto flex flex-col gap-4">
+        
+        <!-- Steg 1: Skanna Arbetsorder (Visas när ingen order är vald) -->
+        <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6">
+            <div class="text-center space-y-2">
+                <h2 class="text-2xl font-bold text-slate-700">Ny Plockning</h2>
+                <p class="text-slate-500">Börja med att skanna QR-koden på arbetsordern.</p>
+            </div>
+            
+            <button onclick="startScanning('ORDER')" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-2xl p-8 w-full max-w-sm shadow-lg flex flex-col items-center gap-4 transition-transform transform active:scale-95">
+                <i data-lucide="scan-line" class="w-16 h-16"></i>
+                <span class="text-xl font-bold">Skanna Arbetsorder</span>
+            </button>
+        </div>
+
+        <!-- Steg 2: Hantera Reservdelar (Visas när order är vald) -->
+        <div id="step-parts" class="hidden flex-col h-full gap-4">
+            
+            <!-- Order Info Kort -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktiv Arbetsorder</div>
+                <div class="flex justify-between items-center">
+                    <div id="current-order-display" class="text-2xl font-bold text-slate-800">AO-25-1475</div>
+                    <button onclick="clearOrder()" class="text-red-500 hover:bg-red-50 p-2 rounded-lg text-sm font-medium transition-colors">
+                        Avbryt order
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lägg till del (Kamera / Manuell) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <button onclick="startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex items-center justify-center gap-3 shadow transition-colors">
+                    <i data-lucide="camera" class="w-6 h-6"></i>
+                    <span class="font-bold text-lg">Skanna Reservdel</span>
+                </button>
+                
+                <div class="flex gap-2">
+                    <input type="text" id="manual-part-input" placeholder="Ange artikelnr..." class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg">
+                    <button onclick="addManualPart()" class="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors">
+                        Lägg till
+                    </button>
+                </div>
+            </div>
+
+            <!-- Lista över plockade delar -->
+            <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="bg-slate-50 p-3 border-b border-slate-200 text-sm font-semibold text-slate-600">
+                    Plockade artiklar
+                </div>
+                <div id="parts-list" class="overflow-y-auto p-2 flex-grow">
+                    <!-- Artiklarna renderas här via JS -->
+                </div>
+            </div>
+
+            <!-- Slutför knapp -->
+            <button onclick="finishOrder()" id="finish-btn" class="w-full bg-blue-800 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity mt-auto flex items-center justify-center gap-2">
+                <i data-lucide="check-circle" class="w-6 h-6"></i>
+                Slutför och Spara
+            </button>
+        </div>
+    </main>
+
+    <!-- Skanner Modal (Visas ovanpå allt annat) -->
+    <div id="scanner-ui" class="hidden absolute inset-0 bg-black z-50 flex flex-col">
+        <div class="flex justify-between items-center p-4 bg-black/80 text-white">
+            <h3 id="scanner-title" class="text-lg font-semibold">Skannar...</h3>
+            <button onclick="stopScanning()" class="bg-red-600 hover:bg-red-700 rounded-lg px-4 py-2 font-medium flex items-center gap-2">
+                <i data-lucide="x" class="w-5 h-5"></i> Stäng
+            </button>
+        </div>
+        <div class="flex-grow flex items-center justify-center relative overflow-hidden bg-black">
+            <div id="reader" class="w-full max-w-md"></div>
+        </div>
+        <div class="p-6 bg-black/80 text-center text-slate-300 text-sm">
+            Rikta kameran mot streckkoden eller QR-koden. Den läses av automatiskt.
+        </div>
+    </div>
+
+    <!-- Toast / Notis Meddelande (I stället för alert) -->
+    <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 translate-y-[150%] z-50 flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="info" class="w-5 h-5"></i>
+        <span id="toast-msg">Meddelande</span>
+    </div>
+
+    <script>
+        // Initiera ikoner
+        lucide.createIcons();
+
+        // --- APPLIKATIONS-STATE ---
+        let currentOrderNo = null;
+        let scannedParts = []; // Array of { partNo: string, qty: number }
+        
+        // --- SKANNER-STATE ---
+        let html5QrcodeScanner = null;
+        let scanMode = null; // 'ORDER' eller 'PART'
+        let isScanning = false;
+
+        // Referenser till DOM-element
+        const uiMain = document.getElementById('main-ui');
+        const uiStepOrder = document.getElementById('step-order');
+        const uiStepParts = document.getElementById('step-parts');
+        const uiScanner = document.getElementById('scanner-ui');
+        const scannerTitle = document.getElementById('scanner-title');
+        const orderDisplay = document.getElementById('current-order-display');
+        const headerBadge = document.getElementById('header-order-badge');
+        const partsListContainer = document.getElementById('parts-list');
+        const finishBtn = document.getElementById('finish-btn');
+        const manualInput = document.getElementById('manual-part-input');
+
+        // --- FUNKTIONER FÖR ANVÄNDARGRÄNSSNITTET ---
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            toastMsg.textContent = msg;
+            
+            // Färg beroende på typ
+            if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            else if(type === 'error') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            
+            // Visa toast
+            toast.classList.remove('translate-y-[150%]');
+            
+            // Göm efter 3 sekunder
+            setTimeout(() => {
+                toast.classList.add('translate-y-[150%]');
+            }, 3000);
+        }
+
+        function updateUI() {
+            if (!currentOrderNo) {
+                // Visa startskärmen
+                uiStepOrder.classList.remove('hidden');
+                uiStepOrder.classList.add('flex');
+                uiStepParts.classList.add('hidden');
+                uiStepParts.classList.remove('flex');
+                headerBadge.classList.add('hidden');
+            } else {
+                // Visa plock-skärmen
+                uiStepOrder.classList.add('hidden');
+                uiStepOrder.classList.remove('flex');
+                uiStepParts.classList.remove('hidden');
+                uiStepParts.classList.add('flex');
+                
+                orderDisplay.textContent = currentOrderNo;
+                headerBadge.textContent = currentOrderNo;
+                headerBadge.classList.remove('hidden');
+
+                renderPartsList();
+            }
+        }
+
+        function renderPartsList() {
+            partsListContainer.innerHTML = ''; // Rensa listan
+            
+            if (scannedParts.length === 0) {
+                partsListContainer.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center gap-2">
+                        <i data-lucide="package-open" class="w-12 h-12 opacity-50"></i>
+                        <p>Inga reservdelar plockade ännu.</p>
+                    </div>`;
+                
+                finishBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                finishBtn.classList.remove('hover:bg-blue-900', 'active:bg-blue-950');
+                lucide.createIcons();
+                return;
+            }
+
+            finishBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            finishBtn.classList.add('hover:bg-blue-900', 'active:bg-blue-950');
+
+            scannedParts.forEach((part, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center justify-between p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors';
+                
+                itemDiv.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="bg-blue-100 text-blue-800 p-2 rounded-lg">
+                            <i data-lucide="box" class="w-5 h-5"></i>
+                        </div>
+                        <div class="font-bold text-slate-800 text-lg tracking-wide">${part.partNo}</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center bg-slate-100 rounded-lg border border-slate-200">
+                            <button onclick="changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors">
+                                <i data-lucide="minus" class="w-4 h-4"></i>
+                            </button>
+                            <span class="w-8 text-center font-bold text-slate-800 select-none">${part.qty}</span>
+                            <button onclick="changeQty(${index}, 1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-r-lg transition-colors">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <button onclick="removePart(${index})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `;
+                partsListContainer.appendChild(itemDiv);
+            });
+            
+            // Om-rendera ikoner för de nya elementen
+            lucide.createIcons();
+        }
+
+        // --- DATA HANTERING ---
+
+        function addPartToList(partNumber) {
+            if (!partNumber) return;
+            const cleanedPartNo = partNumber.trim().toUpperCase();
+            
+            // Kolla om delen redan finns, öka i så fall antal
+            const existingPartIndex = scannedParts.findIndex(p => p.partNo === cleanedPartNo);
+            
+            if (existingPartIndex >= 0) {
+                scannedParts[existingPartIndex].qty += 1;
+                showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
+            } else {
+                scannedParts.unshift({ partNo: cleanedPartNo, qty: 1 }); // Lägg till överst
+                showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
+            }
+            
+            // Vibrera om enheten stödjer det för haptisk feedback
+            if(navigator.vibrate) navigator.vibrate(50);
+            
+            updateUI();
+        }
+
+        function addManualPart() {
+            const val = manualInput.value;
+            if (val.trim() === '') {
+                showToast('Ange ett artikelnummer', 'error');
+                return;
+            }
+            addPartToList(val);
+            manualInput.value = ''; // Rensa fältet
+            manualInput.focus(); // Behåll fokus
+        }
+
+        // Tillåt "Enter" i manuella fältet
+        manualInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                addManualPart();
+            }
+        });
+
+        function changeQty(index, delta) {
+            const newQty = scannedParts[index].qty + delta;
+            if (newQty > 0) {
+                scannedParts[index].qty = newQty;
+            } else {
+                // Om 0, fråga inte, ta bara bort den
+                removePart(index);
+                return;
+            }
+            updateUI();
+        }
+
+        function removePart(index) {
+            scannedParts.splice(index, 1);
+            updateUI();
+        }
+
+        function clearOrder() {
+            currentOrderNo = null;
+            scannedParts = [];
+            updateUI();
+        }
+
+        function finishOrder() {
+            if (scannedParts.length === 0) return;
+            
+            // Här hade koden legat för att skicka datan till en server/databas
+            console.log("Sparar order:", {
+                orderId: currentOrderNo,
+                parts: scannedParts,
+                timestamp: new Date().toISOString()
+            });
+
+            showToast('Arbetsorder sparad och stängd!', 'success');
+            
+            // Återställ appen för nästa
+            setTimeout(() => {
+                clearOrder();
+            }, 1000);
+        }
+
+        // --- SKANNER LOGIK ---
+
+        function initScannerIfNeeded() {
+            if (!html5QrcodeScanner) {
+                // Använd Html5Qrcode (ej den inbyggda ui-varianten) för full kontroll över gränssnittet
+                html5QrcodeScanner = new Html5Qrcode("reader");
+            }
+        }
+
+        function startScanning(mode) {
+            scanMode = mode;
+            scannerTitle.textContent = mode === 'ORDER' ? 'Skanna Arbetsorder QR' : 'Skanna Reservdel';
+            
+            uiMain.classList.add('hidden');
+            uiScanner.classList.remove('hidden');
+            uiScanner.classList.add('flex');
+
+            initScannerIfNeeded();
+
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+
+            // Starta kameran. 'environment' föredrar kameran på baksidan.
+            html5QrcodeScanner.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess,
+                onScanFailure
+            ).then(() => {
+                isScanning = true;
+            }).catch(err => {
+                console.error("Kunde inte starta skannern:", err);
+                stopScanning();
+                showToast('Kunde inte starta kameran. Kontrollera behörigheter.', 'error');
+            });
+        }
+
+        function stopScanning() {
+            if (isScanning && html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => {
+                    isScanning = false;
+                    closeScannerUI();
+                }).catch(err => {
+                    console.error("Fel vid stopp av skanner:", err);
+                    closeScannerUI();
+                });
+            } else {
+                closeScannerUI();
+            }
+        }
+
+        function closeScannerUI() {
+            uiScanner.classList.add('hidden');
+            uiScanner.classList.remove('flex');
+            uiMain.classList.remove('hidden');
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // Vad som händer när vi hittar en kod
+            if (scanMode === 'ORDER') {
+                currentOrderNo = decodedText.trim();
+                showToast(`Arbetsorder ${currentOrderNo} vald`, 'success');
+                if(navigator.vibrate) navigator.vibrate(100);
+                stopScanning();
+                updateUI();
+            } 
+            else if (scanMode === 'PART') {
+                addPartToList(decodedText);
+                // Vi stänger skannern efter varje läst reservdel för att visa listan (och låta dem ändra antal)
+                // Alternativt kan man låta den vara igång.
+                stopScanning(); 
+            }
+        }
+
+        function onScanFailure(error) {
+            // Detta körs väldigt ofta när kameran inte ser en kod. 
+            // Vi ignorerar dessa varningar i bakgrunden.
+        }
+
+        // Initiera UI vid laddning
+        updateUI();
+
+    </script>
+</body>
+</html>

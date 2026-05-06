@@ -73,7 +73,6 @@
                     Fordon / Arbetsorder
                 </label>
                 <div class="flex gap-2">
-                    <!-- Tar bort numeric inputmode så bokstäver syns som standard för Reg-nr -->
                     <input type="text" id="manual-order-input" placeholder="T.ex. OEJ634, DM10..." class="flex-grow bg-slate-50 border border-slate-300 rounded-xl px-4 py-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:bg-white uppercase text-xl font-bold transition-colors">
                 </div>
                 <button onclick="setManualOrder()" class="bg-blue-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md w-full flex justify-center items-center gap-2">
@@ -128,7 +127,7 @@
                 </div>
             </div>
 
-            <!-- Lista över plockade delar (Får automatiskt mer plats när panelen ovan stängs) -->
+            <!-- Lista över plockade delar -->
             <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[150px]">
                 <div class="bg-slate-100 p-3 border-b border-slate-200 text-sm font-bold text-slate-700 flex justify-between items-center">
                     <span>Plockade artiklar</span>
@@ -308,21 +307,23 @@
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            if (currentMode === 'ADMIN' && currentUser && !unsubAdmin) {
-                startAdminListener();
+            // Vi startar alltid lyssnaren när vi loggat in så vi har alla ordrar i minnet!
+            if (currentUser && !unsubAdmin) {
+                startDatabaseListener();
             }
         });
 
         // --- STATE ---
         let currentMode = 'SHOP'; 
-        let currentOrderNo = null; // Används nu för RegNr / InternNr / AONr
+        let currentDisplayId = null; // Vad användaren ser, t.ex. 'DM10' eller 'OEJ634'
+        let currentDocId = null;     // Databasens unika ID, t.ex. 'DM10_1715000000'
         let scannedParts = []; 
         let unsubAdmin = null; 
         let itemToDelete = null; 
         let hasUnsavedChanges = false;
-        let isAddSectionOpen = true; // Håller koll på om Lägg-till-panelen är öppen
-        let adminTab = 'ACTIVE'; // NY: Håller koll på om vi visar Aktiva eller Arkiverade
-        let allCachedOrders = []; // NY: Sparar alla ordrar tillfälligt för snabba byten mellan flikar
+        let isAddSectionOpen = true; 
+        let adminTab = 'ACTIVE'; 
+        let allCachedOrders = []; // Håller hela orderhistoriken live
         
         // --- SKANNER-STATE ---
         let html5QrcodeScanner = null;
@@ -410,7 +411,7 @@
                 viewToggleBtn.innerHTML = `<i data-lucide="wrench" class="w-4 h-4"></i><span id="view-toggle-text">Verkstadsvy</span>`;
                 lucide.createIcons();
                 
-                if (currentUser) startAdminListener();
+                renderAdminView(allCachedOrders);
             } else {
                 currentMode = 'SHOP';
                 uiAdmin.classList.add('hidden');
@@ -421,10 +422,6 @@
                 viewToggleBtn.innerHTML = `<i data-lucide="layout-dashboard" class="w-4 h-4"></i><span id="view-toggle-text">Adminvy</span>`;
                 lucide.createIcons();
                 
-                if (unsubAdmin) {
-                    unsubAdmin();
-                    unsubAdmin = null;
-                }
                 updateUI();
             }
         }
@@ -432,7 +429,7 @@
         function updateUI() {
             if (currentMode !== 'SHOP') return;
 
-            if (!currentOrderNo) {
+            if (!currentDisplayId) {
                 uiStepOrder.classList.remove('hidden');
                 uiStepOrder.classList.add('flex');
                 uiStepParts.classList.add('hidden');
@@ -444,8 +441,8 @@
                 uiStepParts.classList.remove('hidden');
                 uiStepParts.classList.add('flex');
                 
-                orderDisplay.textContent = currentOrderNo;
-                headerBadge.textContent = currentOrderNo;
+                orderDisplay.textContent = currentDisplayId;
+                headerBadge.textContent = currentDisplayId;
                 headerBadge.classList.remove('hidden');
 
                 renderPartsList();
@@ -512,53 +509,50 @@
             hasUnsavedChanges = true;
         }
 
-        async function loadOrder(entityId) {
+        function loadOrder(inputValue) {
             if (!currentUser) {
                 showToast("Väntar på systemanslutning...", "error");
                 return;
             }
 
-            currentOrderNo = entityId;
-            scannedParts = [];
-            orderFinishedCb.checked = false;
-            
-            showToast(`Hämtar data för ${entityId}...`);
-            
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', entityId);
-                const docSnap = await getDoc(docRef);
+            // Filtrera ut alla plocklistor som hör till detta fordon (bakåtkompatibel med gamla 'orderId')
+            const matches = allCachedOrders.filter(o => 
+                (o.displayId && o.displayId === inputValue) || 
+                (o.orderId && o.orderId === inputValue)
+            );
 
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    scannedParts = data.parts || [];
-                    orderFinishedCb.checked = data.isFinished || false;
-                    
-                    if(data.isFinished) {
-                        showToast(`Jobbet var redan markerat som färdigt`, 'info');
-                    } else {
-                        showToast(`Hämtade befintlig plocklista`, 'success');
-                    }
-                    
-                    // Om det redan finns delar kan vi fälla ihop inmatningen för bättre översikt
-                    if(scannedParts.length > 0) toggleAddSection(false);
-                    else toggleAddSection(true);
-                    
+            // Ta den nyaste
+            const latest = matches[0];
+
+            if (latest && !latest.isFinished && !latest.isArchived) {
+                // Det finns ett PÅGÅENDE jobb. Återuppta det.
+                currentDocId = latest.docId || latest.orderId; 
+                currentDisplayId = inputValue;
+                scannedParts = latest.parts || [];
+                orderFinishedCb.checked = false;
+                
+                showToast(`Återupptog pågående plocklista`, 'success');
+                if(scannedParts.length > 0) toggleAddSection(false);
+                else toggleAddSection(true);
+            } else {
+                // Skapa ett HELT NYTT jobb (med unik stämpel bakom kulisserna)
+                currentDocId = `${inputValue}_${Date.now()}`;
+                currentDisplayId = inputValue;
+                scannedParts = [];
+                orderFinishedCb.checked = false;
+                
+                if (latest && (latest.isFinished || latest.isArchived)) {
+                    showToast(`Skapade ny plocklista (tidigare besök var stängt)`, 'success');
                 } else {
-                    showToast(`Skapade ny plocklista för ${entityId}`, 'success');
-                    toggleAddSection(true); // Öppen som standard för ny order
+                    showToast(`Skapade ny plocklista för ${inputValue}`, 'success');
                 }
-                
-                hasUnsavedChanges = false;
-                
-            } catch (error) {
-                console.error("Fel vid hämtning:", error);
-                showToast("Kunde inte kontrollera historik", "error");
+                toggleAddSection(true);
             }
             
+            hasUnsavedChanges = false;
             updateUI();
         }
 
-        // Hanterar det nya gemensamma fältet för RegNr, InternNr och AO
         function setManualOrder() {
             const val = manualOrderInput.value;
             if (val.trim() === '') {
@@ -567,17 +561,12 @@
             }
 
             let formattedId = val.trim().toUpperCase();
-            // Rensar bort bindestreck och mellanslag
             const cleaned = formattedId.replace(/[^A-Z0-9]/g, '');
-            
-            // Kolla om det eventuellt är en klassisk arbetsorder (t.ex. 251475 -> AO-25-1475)
             const aoMatch = cleaned.match(/^(?:AO)?(\d{2})(\d{4,})$/);
             
             if (aoMatch) {
                 formattedId = `AO-${aoMatch[1]}-${aoMatch[2]}`;
             } else {
-                // Annars är det mest troligt ett Reg-nr eller Internnummer. 
-                // Vi använder det rakt av (rengjort och versaler), ex: OEJ634 eller DM10
                 formattedId = cleaned;
             }
 
@@ -585,7 +574,6 @@
             loadOrder(formattedId);
         }
 
-        // Kan tolka QR koder från hyllkanter
         function parsePartNumber(rawInput) {
             let text = rawInput.trim();
             if (text.startsWith('{') && text.endsWith('}')) {
@@ -610,7 +598,7 @@
                 showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
             }
             
-            markUnsaved(); // Flaggning för osparad data
+            markUnsaved(); 
             if(navigator.vibrate) navigator.vibrate(50);
             updateUI();
         }
@@ -632,7 +620,7 @@
             const newQty = scannedParts[index].qty + delta;
             if (newQty > 0) {
                 scannedParts[index].qty = newQty;
-                markUnsaved(); // Flaggning
+                markUnsaved(); 
                 updateUI();
             } else {
                 removePart(index);
@@ -655,7 +643,7 @@
             if (itemToDelete !== null) {
                 scannedParts.splice(itemToDelete, 1);
                 itemToDelete = null;
-                markUnsaved(); // Flaggning
+                markUnsaved(); 
                 updateUI();
             }
             closeConfirmModal();
@@ -693,7 +681,8 @@
         }
 
         function clearOrder() {
-            currentOrderNo = null;
+            currentDisplayId = null;
+            currentDocId = null;
             scannedParts = [];
             orderFinishedCb.checked = false;
             hasUnsavedChanges = false;
@@ -714,10 +703,13 @@
                 lucide.createIcons();
 
                 const isFinished = orderFinishedCb.checked;
-                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', currentOrderNo);
+                // Spara nu på det unika databas-ID:t!
+                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', currentDocId);
                 
                 await setDoc(orderRef, {
-                    orderId: currentOrderNo,
+                    docId: currentDocId,
+                    displayId: currentDisplayId,
+                    orderId: currentDisplayId, // Sparar även här ifall gammal kod läser den
                     parts: scannedParts,
                     isFinished: isFinished,
                     savedBy: currentUser.uid,
@@ -744,6 +736,33 @@
             }
         }
 
+        // --- GEMENSAM DATABASLYSSNARE ---
+
+        function startDatabaseListener() {
+            if (!currentUser) return;
+            
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
+            
+            unsubAdmin = onSnapshot(colRef, (snapshot) => {
+                const orders = [];
+                snapshot.forEach(doc => orders.push(doc.data()));
+                
+                // Sortera tidsmässigt, nyaste överst
+                orders.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                allCachedOrders = orders;
+                
+                // Rendera bara adminvyn om den är öppen
+                if (currentMode === 'ADMIN') {
+                    renderAdminView(allCachedOrders);
+                }
+            }, (error) => {
+                console.error("Fel vid live-uppdatering av data:", error);
+                if (currentMode === 'ADMIN') {
+                    adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`;
+                }
+            });
+        }
+
         // --- ADMINVY LOGIK ---
 
         function switchAdminTab(tab) {
@@ -759,14 +778,13 @@
                 tabActive.className = "text-xl font-bold text-slate-400 hover:text-slate-600 pb-1 px-1 transition-colors border-b-2 border-transparent";
             }
             
-            // Rendera om vyn med den sparade datan
             renderAdminView(allCachedOrders);
         }
 
-        async function toggleArchiveOrder(orderId, archiveState) {
+        async function toggleArchiveOrder(docIdToArchive, archiveState) {
             if (!currentUser) return;
             try {
-                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId);
+                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', docIdToArchive);
                 await setDoc(orderRef, { isArchived: archiveState }, { merge: true });
                 showToast(archiveState ? 'Flyttades till arkivet' : 'Återställdes till aktiva', 'success');
             } catch (err) {
@@ -775,29 +793,9 @@
             }
         }
 
-        function startAdminListener() {
-            if (!currentUser) return;
-            
-            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
-            
-            unsubAdmin = onSnapshot(colRef, (snapshot) => {
-                const orders = [];
-                snapshot.forEach(doc => orders.push(doc.data()));
-                
-                orders.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-                allCachedOrders = orders; // Spara lokalt så vi snabbt kan byta flik
-                
-                renderAdminView(allCachedOrders);
-            }, (error) => {
-                console.error("Fel vid live-uppdatering av admin:", error);
-                adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`;
-            });
-        }
-
         function renderAdminView(orders) {
             adminOrdersGrid.innerHTML = '';
             
-            // Filtrera baserat på vald flik (isArchived är antingen true, eller undefined/false)
             const filteredOrders = orders.filter(o => adminTab === 'ACTIVE' ? !o.isArchived : o.isArchived);
             
             if (filteredOrders.length === 0) {
@@ -828,26 +826,27 @@
                     partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`;
                 }
 
-                // Anpassa ikonen beroende på om vi är i arkivet eller inte
                 const archiveIcon = order.isArchived ? 'archive-restore' : 'archive';
                 const archiveTitle = order.isArchived ? 'Återställ till aktiva' : 'Arkivera jobbet';
-                
-                // Lite blekare bakgrund för arkiverade kort
                 const cardBgClass = order.isArchived ? 'bg-slate-100 opacity-90' : 'bg-white';
+
+                // Viktigt: Adminvyn måste peka på det unika id:t för arkiveringen
+                const specificDocId = order.docId || order.orderId;
+                const displayName = order.displayId || order.orderId;
 
                 const card = document.createElement('div');
                 card.className = `${cardBgClass} p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col transition-all`;
                 card.innerHTML = `
                     <div class="flex justify-between items-start border-b border-slate-200 pb-2 mb-2">
                         <div>
-                            <h3 class="font-bold text-lg text-slate-800">${order.orderId}</h3>
+                            <h3 class="font-bold text-lg text-slate-800">${displayName}</h3>
                             <div class="text-xs text-slate-400 flex items-center gap-1 mt-1">
                                 <i data-lucide="clock" class="w-3 h-3"></i> ${date}
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             ${statusBadge}
-                            <button onclick="toggleArchiveOrder('${order.orderId}', ${!order.isArchived})" class="text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 p-1.5 rounded-md transition-colors" title="${archiveTitle}">
+                            <button onclick="toggleArchiveOrder('${specificDocId}', ${!order.isArchived})" class="text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 p-1.5 rounded-md transition-colors" title="${archiveTitle}">
                                 <i data-lucide="${archiveIcon}" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -1006,8 +1005,8 @@
         window.closeOcrModal = closeOcrModal;
         window.markUnsaved = markUnsaved;
         window.toggleAddSection = toggleAddSection; 
-        window.switchAdminTab = switchAdminTab; // NY
-        window.toggleArchiveOrder = toggleArchiveOrder; // NY
+        window.switchAdminTab = switchAdminTab; 
+        window.toggleArchiveOrder = toggleArchiveOrder; 
 
         updateUI();
 

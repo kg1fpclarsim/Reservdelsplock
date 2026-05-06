@@ -27,6 +27,11 @@
         #reader {
             border: none !important;
         }
+        /* För mjuk övergång vid öppning/stängning av lägg-till panelen */
+        .panel-transition {
+            transition: all 0.3s ease-in-out;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
@@ -51,28 +56,29 @@
     <!-- HUVUDVY (Verkstad) -->
     <main id="main-ui" class="flex-grow p-4 overflow-y-auto flex flex-col gap-4">
         
-        <!-- Steg 1: Skanna Arbetsorder -->
-        <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6">
-            <div class="text-center space-y-2">
-                <h2 class="text-2xl font-bold text-slate-700">Ny Plockning</h2>
-                <p class="text-slate-500">Börja med att skanna QR-koden på arbetsordern.</p>
+        <!-- Steg 1: Starta Plockning (Ny design) -->
+        <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-8">
+            <div class="text-center space-y-3">
+                <div class="bg-blue-100 text-blue-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="truck" class="w-10 h-10"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800">Starta Plockning</h2>
+                <p class="text-slate-500 font-medium max-w-xs mx-auto">
+                    Knyt dina reservdelar till ett registreringsnummer, internnummer eller arbetsorder.
+                </p>
             </div>
             
-            <button onclick="startScanning('ORDER')" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-2xl p-8 w-full max-w-sm shadow-lg flex flex-col items-center gap-4 transition-transform transform active:scale-95">
-                <i data-lucide="scan-line" class="w-16 h-16"></i>
-                <span class="text-xl font-bold">Skanna Arbetsorder</span>
-            </button>
-
-            <div class="w-full max-w-sm flex items-center gap-4 mt-2">
-                <div class="flex-grow border-t border-slate-300"></div>
-                <span class="text-slate-500 text-sm font-semibold uppercase tracking-wider">Eller mata in manuellt</span>
-                <div class="flex-grow border-t border-slate-300"></div>
-            </div>
-            
-            <div class="w-full max-w-sm flex gap-2">
-                <input type="text" inputmode="numeric" id="manual-order-input" placeholder="T.ex. 251475" class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg font-medium">
-                <button onclick="setManualOrder()" class="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors">
-                    Öppna
+            <div class="w-full max-w-sm flex flex-col gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <label for="manual-order-input" class="text-sm font-bold text-slate-600 uppercase tracking-wide">
+                    Fordon / Arbetsorder
+                </label>
+                <div class="flex gap-2">
+                    <!-- Tar bort numeric inputmode så bokstäver syns som standard för Reg-nr -->
+                    <input type="text" id="manual-order-input" placeholder="T.ex. OEJ634, DM10..." class="flex-grow bg-slate-50 border border-slate-300 rounded-xl px-4 py-4 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:bg-white uppercase text-xl font-bold transition-colors">
+                </div>
+                <button onclick="setManualOrder()" class="bg-blue-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md w-full flex justify-center items-center gap-2">
+                    <i data-lucide="arrow-right-circle" class="w-6 h-6"></i>
+                    Öppna och börja plocka
                 </button>
             </div>
         </div>
@@ -80,45 +86,53 @@
         <!-- Steg 2: Hantera Reservdelar -->
         <div id="step-parts" class="hidden flex-col h-full gap-4">
             
-            <!-- Order Info Kort -->
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-                <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktiv Arbetsorder</div>
+            <!-- Fordon/Order Info Kort -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0">
+                <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktivt Fordon / Order</div>
                 <div class="flex justify-between items-center">
-                    <div id="current-order-display" class="text-2xl font-bold text-slate-800">AO-25-1475</div>
-                    <button onclick="clearOrder()" class="text-red-500 hover:bg-red-50 p-2 rounded-lg text-sm font-medium transition-colors">
-                        Stäng
+                    <div id="current-order-display" class="text-2xl font-bold text-slate-800">OEJ634</div>
+                    <button onclick="attemptClearOrder()" class="text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg text-sm font-bold transition-colors border border-transparent hover:border-red-100 flex items-center gap-1">
+                        <i data-lucide="x" class="w-4 h-4"></i> Stäng
                     </button>
                 </div>
             </div>
 
-            <!-- Lägg till del -->
-            <div class="flex flex-col gap-3 shrink-0">
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
-                        <i data-lucide="qr-code" class="w-8 h-8"></i>
-                        <span class="font-bold text-sm text-center leading-tight">Skanna<br>QR/Streckkod</span>
-                    </button>
+            <!-- Utfällbar panel för att lägga till delar -->
+            <div class="shrink-0 flex flex-col gap-2">
+                <button onclick="toggleAddSection()" id="toggle-add-btn" class="w-full bg-indigo-600 text-white shadow-md p-3 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-indigo-700 active:bg-indigo-800 transition-colors">
+                    <i data-lucide="plus" class="w-5 h-5 transition-transform duration-300" id="add-chevron"></i>
+                    <span id="toggle-add-btn-text">Lägg till reservdel</span>
+                </button>
+
+                <!-- Själva inmatningsverktygen (Döljs/visas) -->
+                <div id="add-part-section" class="panel-transition flex flex-col gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
+                            <i data-lucide="qr-code" class="w-8 h-8"></i>
+                            <span class="font-bold text-sm text-center leading-tight">Skanna<br>QR/Streckkod</span>
+                        </button>
+                        
+                        <button onclick="document.getElementById('ocr-input').click()" class="bg-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
+                            <i data-lucide="scan-text" class="w-8 h-8"></i>
+                            <span class="font-bold text-sm text-center leading-tight">Läs Text<br>(Fota siffror)</span>
+                        </button>
+                        <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="processOCR(event)">
+                    </div>
                     
-                    <button onclick="document.getElementById('ocr-input').click()" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
-                        <i data-lucide="scan-text" class="w-8 h-8"></i>
-                        <span class="font-bold text-sm text-center leading-tight">Läs Text<br>(Fota siffror)</span>
-                    </button>
-                    <!-- Dold input för att öppna kameran för fotografering -->
-                    <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="processOCR(event)">
-                </div>
-                
-                <div class="flex gap-2 mt-1">
-                    <input type="text" inputmode="numeric" id="manual-part-input" placeholder="Eller ange artikelnr..." class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg">
-                    <button onclick="addManualPart()" class="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors">
-                        Lägg till
-                    </button>
+                    <div class="flex gap-2">
+                        <input type="text" inputmode="numeric" id="manual-part-input" placeholder="Eller ange artikelnr..." class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 uppercase text-lg">
+                        <button onclick="addManualPart()" class="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors">
+                            Spara i listan
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Lista över plockade delar -->
-            <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[200px]">
-                <div class="bg-slate-50 p-3 border-b border-slate-200 text-sm font-semibold text-slate-600">
-                    Plockade artiklar
+            <!-- Lista över plockade delar (Får automatiskt mer plats när panelen ovan stängs) -->
+            <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[150px]">
+                <div class="bg-slate-100 p-3 border-b border-slate-200 text-sm font-bold text-slate-700 flex justify-between items-center">
+                    <span>Plockade artiklar</span>
+                    <span id="part-count-badge" class="bg-slate-300 text-slate-700 py-0.5 px-2 rounded-full text-xs">0</span>
                 </div>
                 <div id="parts-list" class="overflow-y-auto p-2 flex-grow">
                     <!-- Artiklarna renderas här -->
@@ -128,37 +142,40 @@
             <!-- Färdig-markering -->
             <label class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer shrink-0 hover:bg-slate-50 transition-colors">
                 <div class="flex flex-col">
-                    <span class="font-bold text-slate-800 text-lg">Ordern är färdig</span>
-                    <span class="text-xs text-slate-500">Markera om inga fler delar ska plockas</span>
+                    <span class="font-bold text-slate-800 text-lg">Jobbet är färdigt</span>
+                    <span class="text-xs text-slate-500">Markera om inga fler delar ska plockas till detta fordon</span>
                 </div>
-                <input type="checkbox" id="order-finished-cb" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
+                <input type="checkbox" id="order-finished-cb" onchange="markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
             </label>
 
             <!-- Slutför knapp -->
             <button onclick="finishOrder()" id="finish-btn" class="w-full bg-blue-800 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity shrink-0 flex items-center justify-center gap-2">
                 <i data-lucide="save" class="w-6 h-6"></i>
-                Spara Arbetsorder
+                Spara Plocklista
             </button>
         </div>
     </main>
 
     <!-- ADMINVY (Kontoret) -->
     <main id="admin-ui" class="hidden flex-grow p-4 overflow-y-auto flex-col gap-4 bg-slate-50">
-        <div class="flex justify-between items-center mb-2">
-            <h2 class="text-2xl font-bold text-slate-800">Alla Arbetsordrar</h2>
-            <div class="text-sm text-slate-500">Uppdateras live</div>
+        <div class="flex justify-between items-center mb-2 border-b border-slate-200 pb-2">
+            <div class="flex gap-6">
+                <button onclick="switchAdminTab('ACTIVE')" id="tab-active" class="text-xl font-bold text-blue-700 border-b-2 border-blue-700 pb-1 px-1 transition-colors">Aktiva</button>
+                <button onclick="switchAdminTab('ARCHIVED')" id="tab-archived" class="text-xl font-bold text-slate-400 hover:text-slate-600 pb-1 px-1 transition-colors border-b-2 border-transparent">Arkiverade</button>
+            </div>
+            <div class="text-sm text-slate-500 flex items-center gap-1"><i data-lucide="activity" class="w-4 h-4 text-green-500"></i> Live</div>
         </div>
         
         <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Orderkort renderas här -->
-            <div class="text-slate-500 italic">Laddar ordrar...</div>
+            <div class="text-slate-500 italic">Laddar plocklistor...</div>
         </div>
     </main>
 
     <!-- Skanner Modal -->
     <div id="scanner-ui" class="hidden absolute inset-0 bg-black z-50 flex flex-col">
         <div class="flex justify-between items-center p-4 bg-black/80 text-white">
-            <h3 id="scanner-title" class="text-lg font-semibold">Skannar...</h3>
+            <h3 id="scanner-title" class="text-lg font-semibold">Skannar Reservdel...</h3>
             <button onclick="stopScanning()" class="bg-red-600 hover:bg-red-700 rounded-lg px-4 py-2 font-medium flex items-center gap-2">
                 <i data-lucide="x" class="w-5 h-5"></i> Avbryt
             </button>
@@ -168,6 +185,31 @@
         </div>
         <div class="p-6 bg-black/80 text-center text-slate-300 text-sm">
             Rikta kameran mot streckkoden eller QR-koden. Den läses av automatiskt.
+        </div>
+    </div>
+
+    <!-- OCR Välj Resultat Modal -->
+    <div id="ocr-select-modal" class="hidden absolute inset-0 bg-slate-900/80 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50 rounded-t-2xl">
+                <h3 class="font-bold text-indigo-900 text-lg flex items-center gap-2">
+                    <i data-lucide="scan-text" class="w-5 h-5"></i> Välj artikelnummer
+                </h3>
+                <button onclick="closeOcrModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-4 overflow-y-auto flex-grow">
+                <p class="text-sm text-slate-500 mb-4 font-medium">Vi hittade dessa nummer i bilden. Klicka på det som är rätt artikelnummer:</p>
+                <div id="ocr-results-container" class="flex flex-col gap-3">
+                    <!-- Knappar renderas här -->
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-100">
+                <button onclick="closeOcrModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors">
+                    Avbryt (Inget stämmer)
+                </button>
+            </div>
         </div>
     </div>
 
@@ -192,11 +234,37 @@
         </div>
     </div>
 
+    <!-- VARNING MODAL (Osparade ändringar) -->
+    <div id="unsaved-modal" class="hidden absolute inset-0 bg-slate-900/60 z-[75] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all border-t-8 border-orange-500">
+            <div class="flex items-center gap-3 text-orange-600 mb-3">
+                <div class="bg-orange-100 p-2 rounded-full text-orange-600">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Osparade ändringar</h3>
+            </div>
+            <p class="text-slate-600 mb-6 text-sm font-medium">Du har gjort ändringar i plocklistan som inte sparats ännu. Vill du spara nu eller stänga och förlora ändringarna?</p>
+            <div class="flex flex-col gap-3">
+                <button onclick="closeUnsavedModal(); finishOrder();" class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-4 rounded-xl transition-colors shadow-sm text-lg flex items-center justify-center gap-2">
+                    <i data-lucide="save" class="w-5 h-5"></i> Spara Listan
+                </button>
+                <div class="flex gap-3 mt-1">
+                    <button onclick="closeUnsavedModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
+                        Avbryt
+                    </button>
+                    <button onclick="forceClearOrder()" class="flex-1 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 font-bold py-3 rounded-xl transition-colors">
+                        Stäng ändå
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- OCR Laddningsskärm -->
     <div id="ocr-loading" class="hidden absolute inset-0 bg-slate-900/90 z-[60] flex flex-col items-center justify-center text-white backdrop-blur-sm">
         <i data-lucide="loader-2" class="w-16 h-16 animate-spin text-indigo-400 mb-6"></i>
         <h3 class="text-2xl font-bold mb-2">Analyserar bild...</h3>
-        <p class="text-slate-300 text-center px-6">AI letar efter artikelnummer i bilden.<br>Detta kan ta ett par sekunder.</p>
+        <p class="text-slate-300 text-center px-6">AI letar efter siffror i bilden.<br>Detta kan ta ett par sekunder.</p>
     </div>
 
     <!-- Toast Notis -->
@@ -231,7 +299,6 @@
         // Säker inloggning i bakgrunden
         const initAuth = async () => {
             try {
-                // Anonym inloggning för att kunna skriva till databasen
                 await signInAnonymously(auth);
             } catch (err) {
                 console.error("Fel vid inloggning till databasen:", err);
@@ -241,18 +308,21 @@
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            // Om adminvyn är öppen när vi loggar in, ladda ordrarna
             if (currentMode === 'ADMIN' && currentUser && !unsubAdmin) {
                 startAdminListener();
             }
         });
 
         // --- STATE ---
-        let currentMode = 'SHOP'; // 'SHOP' eller 'ADMIN'
-        let currentOrderNo = null;
+        let currentMode = 'SHOP'; 
+        let currentOrderNo = null; // Används nu för RegNr / InternNr / AONr
         let scannedParts = []; 
-        let unsubAdmin = null; // Databas-lyssnare för admin
-        let itemToDelete = null; // Index för artikeln som användaren försöker ta bort
+        let unsubAdmin = null; 
+        let itemToDelete = null; 
+        let hasUnsavedChanges = false;
+        let isAddSectionOpen = true; // Håller koll på om Lägg-till-panelen är öppen
+        let adminTab = 'ACTIVE'; // NY: Håller koll på om vi visar Aktiva eller Arkiverade
+        let allCachedOrders = []; // NY: Sparar alla ordrar tillfälligt för snabba byten mellan flikar
         
         // --- SKANNER-STATE ---
         let html5QrcodeScanner = null;
@@ -278,6 +348,8 @@
         const viewToggleText = document.getElementById('view-toggle-text');
         const confirmModal = document.getElementById('confirm-modal');
         const confirmModalText = document.getElementById('confirm-modal-text');
+        const unsavedModal = document.getElementById('unsaved-modal');
+        const partCountBadge = document.getElementById('part-count-badge');
 
         lucide.createIcons();
 
@@ -294,6 +366,36 @@
             
             toast.classList.remove('translate-y-[150%]');
             setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
+        }
+
+        // Fäll in/ut panelen för att lägga till artiklar
+        function toggleAddSection(forceState = null) {
+            if (forceState !== null) {
+                isAddSectionOpen = forceState;
+            } else {
+                isAddSectionOpen = !isAddSectionOpen;
+            }
+            
+            const section = document.getElementById('add-part-section');
+            const icon = document.getElementById('add-chevron');
+            const btn = document.getElementById('toggle-add-btn');
+            const btnText = document.getElementById('toggle-add-btn-text');
+            
+            if (isAddSectionOpen) {
+                section.classList.remove('hidden');
+                section.classList.add('flex');
+                icon.style.transform = 'rotate(45deg)';
+                btn.classList.replace('bg-indigo-100', 'bg-indigo-600');
+                btn.classList.replace('text-indigo-700', 'text-white');
+                btnText.textContent = "Dölj inmatning";
+            } else {
+                section.classList.add('hidden');
+                section.classList.remove('flex');
+                icon.style.transform = 'rotate(0deg)';
+                btn.classList.replace('bg-indigo-600', 'bg-indigo-100');
+                btn.classList.replace('text-white', 'text-indigo-700');
+                btnText.textContent = "Lägg till reservdel";
+            }
         }
 
         function toggleViewMode() {
@@ -353,6 +455,9 @@
         function renderPartsList() {
             partsListContainer.innerHTML = '';
             
+            // Räkna ut totala unika rader för mätaren
+            partCountBadge.textContent = scannedParts.length;
+            
             if (scannedParts.length === 0) {
                 partsListContainer.innerHTML = `
                     <div class="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center gap-2">
@@ -403,21 +508,24 @@
 
         // --- ARBETSORDER & RESERVDEL LOGIK ---
 
-        async function loadOrder(orderNo) {
+        function markUnsaved() {
+            hasUnsavedChanges = true;
+        }
+
+        async function loadOrder(entityId) {
             if (!currentUser) {
                 showToast("Väntar på systemanslutning...", "error");
                 return;
             }
 
-            // Visa tillfälligt UI
-            currentOrderNo = orderNo;
+            currentOrderNo = entityId;
             scannedParts = [];
             orderFinishedCb.checked = false;
             
-            showToast(`Hämtar data för ${orderNo}...`);
+            showToast(`Hämtar data för ${entityId}...`);
             
             try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderNo);
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', entityId);
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
@@ -426,49 +534,64 @@
                     orderFinishedCb.checked = data.isFinished || false;
                     
                     if(data.isFinished) {
-                        showToast(`Ordern var redan markerad som färdig`, 'info');
+                        showToast(`Jobbet var redan markerat som färdigt`, 'info');
                     } else {
-                        showToast(`Hämtade befintlig order`, 'success');
+                        showToast(`Hämtade befintlig plocklista`, 'success');
                     }
+                    
+                    // Om det redan finns delar kan vi fälla ihop inmatningen för bättre översikt
+                    if(scannedParts.length > 0) toggleAddSection(false);
+                    else toggleAddSection(true);
+                    
                 } else {
-                    showToast(`Ny arbetsorder skapad`, 'success');
+                    showToast(`Skapade ny plocklista för ${entityId}`, 'success');
+                    toggleAddSection(true); // Öppen som standard för ny order
                 }
+                
+                hasUnsavedChanges = false;
+                
             } catch (error) {
                 console.error("Fel vid hämtning:", error);
-                showToast("Kunde inte kontrollera orderhistorik", "error");
+                showToast("Kunde inte kontrollera historik", "error");
             }
             
             updateUI();
         }
 
+        // Hanterar det nya gemensamma fältet för RegNr, InternNr och AO
         function setManualOrder() {
             const val = manualOrderInput.value;
             if (val.trim() === '') {
-                showToast('Ange ett arbetsordernummer', 'error');
+                showToast('Ange ett fordon eller arbetsorder', 'error');
                 return;
             }
 
-            let formattedOrder = val.trim().toUpperCase();
-            const cleaned = formattedOrder.replace(/[^A-Z0-9]/g, '');
-            const match = cleaned.match(/^(?:AO)?(\d{2})(\d+)$/);
+            let formattedId = val.trim().toUpperCase();
+            // Rensar bort bindestreck och mellanslag
+            const cleaned = formattedId.replace(/[^A-Z0-9]/g, '');
             
-            if (match) formattedOrder = `AO-${match[1]}-${match[2]}`;
+            // Kolla om det eventuellt är en klassisk arbetsorder (t.ex. 251475 -> AO-25-1475)
+            const aoMatch = cleaned.match(/^(?:AO)?(\d{2})(\d{4,})$/);
+            
+            if (aoMatch) {
+                formattedId = `AO-${aoMatch[1]}-${aoMatch[2]}`;
+            } else {
+                // Annars är det mest troligt ett Reg-nr eller Internnummer. 
+                // Vi använder det rakt av (rengjort och versaler), ex: OEJ634 eller DM10
+                formattedId = cleaned;
+            }
 
             manualOrderInput.value = ''; 
-            loadOrder(formattedOrder); // Ladda istället för att bara sätta ID
+            loadOrder(formattedId);
         }
 
-        // --- NY FUNKTION: Tolka komplexa QR-koder (t.ex. {13|1874|1000018|200|MVBF}) ---
+        // Kan tolka QR koder från hyllkanter
         function parsePartNumber(rawInput) {
             let text = rawInput.trim();
-            
             if (text.startsWith('{') && text.endsWith('}')) {
                 let innerText = text.substring(1, text.length - 1);
                 let segments = innerText.split('|');
-                
-                if (segments.length >= 3) {
-                    return segments[2].trim(); 
-                }
+                if (segments.length >= 3) return segments[2].trim(); 
             }
             return text;
         }
@@ -487,6 +610,7 @@
                 showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
             }
             
+            markUnsaved(); // Flaggning för osparad data
             if(navigator.vibrate) navigator.vibrate(50);
             updateUI();
         }
@@ -508,14 +632,14 @@
             const newQty = scannedParts[index].qty + delta;
             if (newQty > 0) {
                 scannedParts[index].qty = newQty;
+                markUnsaved(); // Flaggning
                 updateUI();
             } else {
-                // Om de går under 1 i antal triggar vi samma bekräftelse
                 removePart(index);
             }
         }
 
-        // --- BEKRÄFTELSE FÖR ATT TA BORT ---
+        // --- BEKRÄFTELSE FÖR ATT TA BORT ARTIKEL ---
         function removePart(index) {
             itemToDelete = index;
             const part = scannedParts[index];
@@ -531,6 +655,7 @@
             if (itemToDelete !== null) {
                 scannedParts.splice(itemToDelete, 1);
                 itemToDelete = null;
+                markUnsaved(); // Flaggning
                 updateUI();
             }
             closeConfirmModal();
@@ -546,15 +671,37 @@
             confirmModal.classList.remove('flex');
         }
 
+        // --- HANTERA STÄNGNING AV ORDER ---
+        function attemptClearOrder() {
+            if (hasUnsavedChanges) {
+                unsavedModal.classList.remove('hidden');
+                unsavedModal.classList.add('flex');
+                lucide.createIcons();
+            } else {
+                clearOrder();
+            }
+        }
+
+        function closeUnsavedModal() {
+            unsavedModal.classList.add('hidden');
+            unsavedModal.classList.remove('flex');
+        }
+
+        function forceClearOrder() {
+            closeUnsavedModal();
+            clearOrder();
+        }
+
         function clearOrder() {
             currentOrderNo = null;
             scannedParts = [];
             orderFinishedCb.checked = false;
+            hasUnsavedChanges = false;
             updateUI();
         }
 
         async function finishOrder() {
-            if (scannedParts.length === 0) return;
+            if (scannedParts.length === 0 && !orderFinishedCb.checked) return;
             if (!currentUser) {
                 showToast('Ansluter till molnet, vänligen vänta...', 'error');
                 return;
@@ -577,7 +724,9 @@
                     timestamp: new Date().toISOString()
                 }, { merge: true });
 
-                showToast('Arbetsorder sparad i systemet!', 'success');
+                hasUnsavedChanges = false;
+
+                showToast('Plocklistan är sparad i systemet!', 'success');
                 
                 setTimeout(() => {
                     clearOrder();
@@ -589,13 +738,42 @@
             } catch (error) {
                 console.error("Kunde inte spara:", error);
                 showToast('Ett fel uppstod vid sparandet.', 'error');
-                finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Spara Arbetsorder';
+                finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Spara Plocklista';
                 finishBtn.disabled = false;
                 lucide.createIcons();
             }
         }
 
         // --- ADMINVY LOGIK ---
+
+        function switchAdminTab(tab) {
+            adminTab = tab;
+            const tabActive = document.getElementById('tab-active');
+            const tabArchived = document.getElementById('tab-archived');
+            
+            if (tab === 'ACTIVE') {
+                tabActive.className = "text-xl font-bold text-blue-700 border-b-2 border-blue-700 pb-1 px-1 transition-colors";
+                tabArchived.className = "text-xl font-bold text-slate-400 hover:text-slate-600 pb-1 px-1 transition-colors border-b-2 border-transparent";
+            } else {
+                tabArchived.className = "text-xl font-bold text-blue-700 border-b-2 border-blue-700 pb-1 px-1 transition-colors";
+                tabActive.className = "text-xl font-bold text-slate-400 hover:text-slate-600 pb-1 px-1 transition-colors border-b-2 border-transparent";
+            }
+            
+            // Rendera om vyn med den sparade datan
+            renderAdminView(allCachedOrders);
+        }
+
+        async function toggleArchiveOrder(orderId, archiveState) {
+            if (!currentUser) return;
+            try {
+                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId);
+                await setDoc(orderRef, { isArchived: archiveState }, { merge: true });
+                showToast(archiveState ? 'Flyttades till arkivet' : 'Återställdes till aktiva', 'success');
+            } catch (err) {
+                console.error("Fel vid arkivering:", err);
+                showToast('Kunde inte ändra status', 'error');
+            }
+        }
 
         function startAdminListener() {
             if (!currentUser) return;
@@ -606,10 +784,10 @@
                 const orders = [];
                 snapshot.forEach(doc => orders.push(doc.data()));
                 
-                // Sortera: Nyaste överst
                 orders.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                allCachedOrders = orders; // Spara lokalt så vi snabbt kan byta flik
                 
-                renderAdminView(orders);
+                renderAdminView(allCachedOrders);
             }, (error) => {
                 console.error("Fel vid live-uppdatering av admin:", error);
                 adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`;
@@ -619,18 +797,21 @@
         function renderAdminView(orders) {
             adminOrdersGrid.innerHTML = '';
             
-            if (orders.length === 0) {
-                adminOrdersGrid.innerHTML = `<div class="text-slate-500 col-span-full py-8 text-center">Inga arbetsordrar registrerade ännu.</div>`;
+            // Filtrera baserat på vald flik (isArchived är antingen true, eller undefined/false)
+            const filteredOrders = orders.filter(o => adminTab === 'ACTIVE' ? !o.isArchived : o.isArchived);
+            
+            if (filteredOrders.length === 0) {
+                adminOrdersGrid.innerHTML = `<div class="text-slate-500 col-span-full py-8 text-center">Inga ${adminTab === 'ACTIVE' ? 'aktiva' : 'arkiverade'} fordon registrerade.</div>`;
                 return;
             }
 
-            orders.forEach(order => {
+            filteredOrders.forEach(order => {
                 const date = new Date(order.timestamp).toLocaleString('sv-SE', {
                     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
                 
                 const statusBadge = order.isFinished 
-                    ? `<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded border border-green-200">FÄRDIG</span>`
+                    ? `<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded border border-green-200">FÄRDIGT</span>`
                     : `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded border border-yellow-200">PÅGÅENDE</span>`;
 
                 let partsHtml = '';
@@ -647,17 +828,29 @@
                     partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`;
                 }
 
+                // Anpassa ikonen beroende på om vi är i arkivet eller inte
+                const archiveIcon = order.isArchived ? 'archive-restore' : 'archive';
+                const archiveTitle = order.isArchived ? 'Återställ till aktiva' : 'Arkivera jobbet';
+                
+                // Lite blekare bakgrund för arkiverade kort
+                const cardBgClass = order.isArchived ? 'bg-slate-100 opacity-90' : 'bg-white';
+
                 const card = document.createElement('div');
-                card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col";
+                card.className = `${cardBgClass} p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col transition-all`;
                 card.innerHTML = `
-                    <div class="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
+                    <div class="flex justify-between items-start border-b border-slate-200 pb-2 mb-2">
                         <div>
                             <h3 class="font-bold text-lg text-slate-800">${order.orderId}</h3>
                             <div class="text-xs text-slate-400 flex items-center gap-1 mt-1">
                                 <i data-lucide="clock" class="w-3 h-3"></i> ${date}
                             </div>
                         </div>
-                        ${statusBadge}
+                        <div class="flex items-center gap-2">
+                            ${statusBadge}
+                            <button onclick="toggleArchiveOrder('${order.orderId}', ${!order.isArchived})" class="text-slate-400 hover:text-indigo-600 bg-white hover:bg-indigo-50 border border-slate-200 p-1.5 rounded-md transition-colors" title="${archiveTitle}">
+                                <i data-lucide="${archiveIcon}" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="flex-grow">
                         <div class="text-xs font-semibold text-slate-500 uppercase">Reservdelar:</div>
@@ -679,7 +872,7 @@
 
         function startScanning(mode) {
             scanMode = mode;
-            scannerTitle.textContent = mode === 'ORDER' ? 'Skanna Arbetsorder QR' : 'Skanna Reservdel';
+            scannerTitle.textContent = 'Skanna Reservdel QR/Streckkod';
             
             uiMain.classList.add('hidden');
             uiScanner.classList.remove('hidden');
@@ -724,24 +917,39 @@
         }
 
         function onScanSuccess(decodedText) {
-            if (scanMode === 'ORDER') {
-                if(navigator.vibrate) navigator.vibrate(100);
-                stopScanning();
-                let val = decodedText.trim().toUpperCase();
-                const match = val.replace(/[^A-Z0-9]/g, '').match(/^(?:AO)?(\d{2})(\d+)$/);
-                if (match) val = `AO-${match[1]}-${match[2]}`;
-                
-                loadOrder(val);
-            } 
-            else if (scanMode === 'PART') {
-                // Den nya tolkningsfunktionen körs automatiskt inuti addPartToList
-                addPartToList(decodedText);
-                stopScanning(); 
-            }
+            addPartToList(decodedText);
+            stopScanning(); 
         }
 
-        // --- OCR (TEXTIGENKÄNNING) LOGIK ---
+        // --- OCR LOGIK MED VAL AV NUMMER ---
         
+        function showOcrSelection(matches) {
+            const container = document.getElementById('ocr-results-container');
+            container.innerHTML = ''; 
+
+            matches.forEach(match => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-white border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 active:bg-indigo-100 p-4 rounded-xl text-xl font-bold text-slate-800 transition-colors flex justify-between items-center";
+                btn.innerHTML = `<span>${match}</span> <i data-lucide="chevron-right" class="w-5 h-5 text-indigo-400"></i>`;
+                btn.onclick = () => {
+                    addPartToList(match);
+                    closeOcrModal();
+                };
+                container.appendChild(btn);
+            });
+
+            lucide.createIcons();
+            const modal = document.getElementById('ocr-select-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeOcrModal() {
+            const modal = document.getElementById('ocr-select-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
         async function processOCR(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -752,7 +960,6 @@
             lucide.createIcons();
             
             try {
-                // Använd Tesseract.js för att läsa text från bilden (eng är snabbast och bäst på siffror)
                 const worker = await Tesseract.createWorker('eng');
                 const ret = await worker.recognize(file);
                 await worker.terminate();
@@ -760,15 +967,16 @@
                 const text = ret.data.text;
                 console.log("Inläst text från bild:", text);
                 
-                // Leta efter ett artikelnummer (vi antar att det är 6 till 8 siffror i rad)
-                // Regex \d{6,8} fångar "1000018" (7 siffror) men hoppar över korta tal som "200" eller "6X50"
-                const matches = text.match(/\b\d{6,8}\b/g);
+                const rawMatches = text.match(/\b\d{2,25}\b/g) || [];
+                let uniqueMatches = [...new Set(rawMatches)];
+                uniqueMatches.sort((a, b) => b.length - a.length);
                 
-                if (matches && matches.length > 0) {
-                    // Vi tar den första träffen som ser ut som ett artikelnummer
-                    addPartToList(matches[0]);
+                if (uniqueMatches.length === 0) {
+                    showToast("Hittade inga tydliga siffror i bilden.", "error");
+                } else if (uniqueMatches.length === 1) {
+                    addPartToList(uniqueMatches[0]);
                 } else {
-                    showToast("Hittade inget tydligt artikelnummer (6-8 siffror) i bilden.", "error");
+                    showOcrSelection(uniqueMatches);
                 }
             } catch(err) {
                 console.error("Fel vid bildanalys:", err);
@@ -776,7 +984,7 @@
             } finally {
                 ocrLoading.classList.add('hidden');
                 ocrLoading.classList.remove('flex');
-                event.target.value = ''; // Återställ inputen så man kan ta ny bild
+                event.target.value = ''; 
             }
         }
 
@@ -785,7 +993,9 @@
         window.stopScanning = stopScanning;
         window.setManualOrder = setManualOrder;
         window.addManualPart = addManualPart;
-        window.clearOrder = clearOrder;
+        window.attemptClearOrder = attemptClearOrder;
+        window.closeUnsavedModal = closeUnsavedModal;
+        window.forceClearOrder = forceClearOrder;
         window.finishOrder = finishOrder;
         window.changeQty = changeQty;
         window.removePart = removePart;
@@ -793,6 +1003,11 @@
         window.cancelRemove = cancelRemove;
         window.toggleViewMode = toggleViewMode;
         window.processOCR = processOCR;
+        window.closeOcrModal = closeOcrModal;
+        window.markUnsaved = markUnsaved;
+        window.toggleAddSection = toggleAddSection; 
+        window.switchAdminTab = switchAdminTab; // NY
+        window.toggleArchiveOrder = toggleArchiveOrder; // NY
 
         updateUI();
 

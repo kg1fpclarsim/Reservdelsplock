@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chaufförsplock</title>
+    
+    <!-- PWA / App-inställningar -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chaufförsplock">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Chauff%C3%B6rsplock%22%2C%22short_name%22%3A%22C-Plock%22%2C%22display%22%3A%22standalone%22%2C%22start_url%22%3A%22.%22%2C%22background_color%22%3A%22%23f8fafc%22%2C%22theme_color%22%3A%22%234f46e5%22%7D'>
+
+    <!-- Tailwind & Ikoner -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- Header (Lila färg för att skilja från verkstadens blåa) -->
+    <header class="bg-indigo-600 text-white p-4 shadow-md z-10 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-2">
+            <i data-lucide="truck" class="w-6 h-6"></i>
+            <h1 class="text-xl font-bold tracking-wide">Chaufförsplock</h1>
+            <div id="header-order-badge" class="hidden ml-2 bg-indigo-500 px-3 py-1 rounded-full text-sm font-semibold border border-indigo-400">
+                <!-- Fylls i med JS -->
+            </div>
+        </div>
+    </header>
+
+    <!-- HUVUDVY -->
+    <main id="main-ui" class="flex-grow p-4 overflow-y-auto flex flex-col gap-4">
+        
+        <!-- Steg 1: Välj Fordon -->
+        <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6">
+            <div class="text-center space-y-2 mb-2">
+                <h2 class="text-3xl font-bold text-slate-700">Registrera Delar</h2>
+                <p class="text-slate-500 font-medium">Ange Regnr eller Internnr på ditt fordon.</p>
+            </div>
+            
+            <div class="w-full max-w-sm flex flex-col gap-3">
+                <input type="text" id="manual-order-input" placeholder="T.ex. OEJ634 eller DM10" class="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-5 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 uppercase text-lg font-bold text-center tracking-wider transition-all shadow-sm">
+                
+                <button onclick="setManualOrder()" class="w-full bg-indigo-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-md flex items-center justify-center gap-2">
+                    <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
+                    Öppna / Skapa
+                </button>
+            </div>
+        </div>
+
+        <!-- Steg 2: Hantera Reservdelar -->
+        <div id="step-parts" class="hidden flex-col h-full gap-4">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0">
+                <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktivt Fordon</div>
+                <div class="flex justify-between items-center">
+                    <div id="current-order-display" class="text-2xl font-bold text-slate-800">DM10</div>
+                    <button onclick="attemptClearOrder()" class="text-red-500 hover:bg-red-50 p-2 rounded-lg text-sm font-medium transition-colors">
+                        Stäng
+                    </button>
+                </div>
+            </div>
+
+            <!-- Manuell inmatning av reservdel -->
+            <div class="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-100 shrink-0 flex flex-col gap-2">
+                <label class="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Lägg till reservdel
+                </label>
+                <div class="flex gap-2">
+                    <input type="text" id="manual-part-input" placeholder="Ange artikelnr..." class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 uppercase text-lg font-bold">
+                    <button onclick="addManualPart()" class="bg-indigo-600 text-white rounded-xl px-6 font-bold hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm">
+                        Lägg till
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[150px]">
+                <div class="bg-slate-50 p-3 border-b border-slate-200 text-sm font-semibold text-slate-600 flex justify-between items-center">
+                    <span>Plockade artiklar</span>
+                    <span id="part-count-badge" class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs hidden">0 st</span>
+                </div>
+                <div id="parts-list" class="overflow-y-auto p-2 flex-grow">
+                    <!-- Artiklarna renderas här -->
+                </div>
+            </div>
+
+            <!-- Färdig-markering -->
+            <label class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer shrink-0 hover:bg-slate-50 transition-colors">
+                <div class="flex flex-col">
+                    <span class="font-bold text-slate-800 text-lg">Plockningen är färdig</span>
+                    <span class="text-xs text-slate-500">Kryssa i om du plockat klart allt</span>
+                </div>
+                <input type="checkbox" id="order-finished-cb" onchange="markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
+            </label>
+
+            <!-- Slutför knapp -->
+            <button onclick="finishOrder()" id="finish-btn" class="w-full bg-indigo-600 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity shrink-0 flex items-center justify-center gap-2 hover:bg-indigo-700 active:bg-indigo-800">
+                <i data-lucide="save" class="w-6 h-6"></i>
+                Skicka in reservdelar
+            </button>
+        </div>
+    </main>
+
+    <!-- Modaler -->
+
+    <!-- Bekräftelse Modal (Ta bort artikel) -->
+    <div id="confirm-modal" class="hidden absolute inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all">
+            <div class="flex items-center gap-3 text-red-600 mb-4">
+                <div class="bg-red-100 p-2 rounded-full text-red-600">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3>
+            </div>
+            <p class="text-slate-600 mb-6" id="confirm-modal-text">Är du säker på att du vill ta bort artikeln?</p>
+            <div class="flex gap-3">
+                <button onclick="cancelRemove()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
+                    Avbryt
+                </button>
+                <button onclick="confirmRemove()" class="flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 rounded-xl transition-colors shadow-sm">
+                    Ja, ta bort
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VARNING MODAL (Osparade ändringar) -->
+    <div id="unsaved-modal" class="hidden absolute inset-0 bg-slate-900/60 z-[75] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all border-t-8 border-orange-500">
+            <div class="flex items-center gap-3 text-orange-600 mb-3">
+                <div class="bg-orange-100 p-2 rounded-full text-orange-600">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800">Osparade ändringar</h3>
+            </div>
+            <p class="text-slate-600 mb-6 text-sm font-medium">Du har gjort ändringar som inte skickats in. Vill du skicka in nu eller stänga och förlora ändringarna?</p>
+            <div class="flex flex-col gap-3">
+                <button onclick="closeUnsavedModal(); finishOrder();" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-4 rounded-xl transition-colors shadow-sm text-lg flex items-center justify-center gap-2">
+                    <i data-lucide="save" class="w-5 h-5"></i> Skicka in delar
+                </button>
+                <div class="flex gap-3 mt-1">
+                    <button onclick="closeUnsavedModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
+                        Avbryt
+                    </button>
+                    <button onclick="forceClearOrder()" class="flex-1 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 font-bold py-3 rounded-xl transition-colors">
+                        Stäng ändå
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notis -->
+    <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 translate-y-[150%] z-50 flex items-center gap-2 whitespace-nowrap">
+        <i data-lucide="info" class="w-5 h-5"></i>
+        <span id="toast-msg">Meddelande</span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
+            authDomain: "smalands-logistik-verkstad.firebaseapp.com",
+            projectId: "smalands-logistik-verkstad",
+            storageBucket: "smalands-logistik-verkstad.firebasestorage.app",
+            messagingSenderId: "916947926799",
+            appId: "1:916947926799:web:b406d72a2379848b03087a",
+            measurementId: "G-JRBQ6C48XM"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'smalands-logistik-verkstad';
+
+        let currentUser = null;
+
+        const initAuth = async () => {
+            try { await signInAnonymously(auth); } 
+            catch (err) { console.error("Fel vid inloggning till databasen:", err); }
+        };
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => { currentUser = user; });
+
+        // --- STATE ---
+        let currentOrderNo = null;
+        let scannedParts = []; 
+        let itemToDelete = null; 
+        let hasUnsavedChanges = false;
+
+        // --- UI REFERENSER ---
+        const uiMain = document.getElementById('main-ui');
+        const uiStepOrder = document.getElementById('step-order');
+        const uiStepParts = document.getElementById('step-parts');
+        const orderDisplay = document.getElementById('current-order-display');
+        const headerBadge = document.getElementById('header-order-badge');
+        const partsListContainer = document.getElementById('parts-list');
+        const partCountBadge = document.getElementById('part-count-badge');
+        const finishBtn = document.getElementById('finish-btn');
+        const manualInput = document.getElementById('manual-part-input');
+        const manualOrderInput = document.getElementById('manual-order-input');
+        const orderFinishedCb = document.getElementById('order-finished-cb');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmModalText = document.getElementById('confirm-modal-text');
+        const unsavedModal = document.getElementById('unsaved-modal'); 
+
+        lucide.createIcons();
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            toastMsg.textContent = msg;
+            if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            else if(type === 'error') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            toast.classList.remove('translate-y-[150%]');
+            setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
+        }
+
+        function updateUI() {
+            if (!currentOrderNo) {
+                uiStepOrder.classList.remove('hidden');
+                uiStepOrder.classList.add('flex');
+                uiStepParts.classList.add('hidden');
+                uiStepParts.classList.remove('flex');
+                headerBadge.classList.add('hidden');
+            } else {
+                uiStepOrder.classList.add('hidden');
+                uiStepOrder.classList.remove('flex');
+                uiStepParts.classList.remove('hidden');
+                uiStepParts.classList.add('flex');
+                
+                orderDisplay.textContent = currentOrderNo;
+                headerBadge.textContent = currentOrderNo;
+                headerBadge.classList.remove('hidden');
+
+                renderPartsList();
+            }
+        }
+
+        function renderPartsList() {
+            partsListContainer.innerHTML = '';
+            
+            if (scannedParts.length === 0) {
+                partCountBadge.classList.add('hidden');
+                partsListContainer.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center gap-2">
+                        <i data-lucide="package-open" class="w-12 h-12 opacity-50"></i>
+                        <p>Inga reservdelar plockade ännu.</p>
+                    </div>`;
+                
+                finishBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                finishBtn.classList.remove('hover:bg-indigo-700', 'active:bg-indigo-800');
+                lucide.createIcons();
+                return;
+            }
+
+            partCountBadge.textContent = `${scannedParts.length} st`;
+            partCountBadge.classList.remove('hidden');
+
+            finishBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            finishBtn.classList.add('hover:bg-indigo-700', 'active:bg-indigo-800');
+
+            scannedParts.forEach((part, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'flex items-center justify-between p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors';
+                
+                itemDiv.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-100 text-indigo-800 p-2 rounded-lg">
+                            <i data-lucide="box" class="w-5 h-5"></i>
+                        </div>
+                        <div class="font-bold text-slate-800 text-lg tracking-wide">${part.partNo}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center bg-slate-100 rounded-lg border border-slate-200">
+                            <button onclick="changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors">
+                                <i data-lucide="minus" class="w-4 h-4"></i>
+                            </button>
+                            <span class="w-8 text-center font-bold text-slate-800 select-none">${part.qty}</span>
+                            <button onclick="changeQty(${index}, 1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-r-lg transition-colors">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <button onclick="removePart(${index})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `;
+                partsListContainer.appendChild(itemDiv);
+            });
+            lucide.createIcons();
+        }
+
+        function markUnsaved() { hasUnsavedChanges = true; }
+
+        function loadOrder(orderNo) {
+            if (!currentUser) { showToast("Väntar på systemanslutning...", "error"); return; }
+
+            currentOrderNo = orderNo;
+            scannedParts = [];
+            orderFinishedCb.checked = false;
+            
+            showToast(`Ny plockning startad för ${orderNo}`, 'success');
+            hasUnsavedChanges = false;
+            
+            updateUI();
+        }
+
+        function setManualOrder() {
+            const val = manualOrderInput.value;
+            if (val.trim() === '') {
+                showToast('Du måste ange ett id (t.ex. regnr)', 'error');
+                return;
+            }
+            let formattedOrder = val.trim().toUpperCase();
+            
+            const cleanedForAo = formattedOrder.replace(/[^A-Z0-9]/g, '');
+            if (cleanedForAo.length >= 5 && /^(?:AO)?\d+$/.test(cleanedForAo)) {
+                const match = cleanedForAo.match(/^(?:AO)?(\d{2})(\d+)$/);
+                if (match) formattedOrder = `AO-${match[1]}-${match[2]}`;
+            }
+
+            manualOrderInput.value = ''; 
+            loadOrder(formattedOrder);
+        }
+
+        function addPartToList(rawPartNumber) {
+            if (!rawPartNumber) return;
+            const cleanedPartNo = rawPartNumber.trim().toUpperCase();
+            const existingPartIndex = scannedParts.findIndex(p => p.partNo === cleanedPartNo);
+            
+            if (existingPartIndex >= 0) {
+                scannedParts[existingPartIndex].qty += 1;
+                showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
+            } else {
+                scannedParts.unshift({ partNo: cleanedPartNo, qty: 1 });
+                showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
+            }
+            
+            markUnsaved(); 
+            if(navigator.vibrate) navigator.vibrate(50);
+            updateUI();
+        }
+
+        function addManualPart() {
+            const val = manualInput.value;
+            if (val.trim() === '') return;
+            addPartToList(val);
+            manualInput.value = '';
+            manualInput.focus();
+        }
+
+        manualInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addManualPart(); });
+        manualOrderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') setManualOrder(); });
+
+        function changeQty(index, delta) {
+            const newQty = scannedParts[index].qty + delta;
+            if (newQty > 0) {
+                scannedParts[index].qty = newQty;
+                markUnsaved(); 
+                updateUI();
+            } else {
+                removePart(index);
+            }
+        }
+
+        function removePart(index) {
+            itemToDelete = index;
+            const part = scannedParts[index];
+            confirmModalText.innerHTML = `Är du säker på att du vill ta bort <strong>${part.partNo}</strong> från listan?`;
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function confirmRemove() {
+            if (itemToDelete !== null) {
+                scannedParts.splice(itemToDelete, 1);
+                itemToDelete = null;
+                markUnsaved(); 
+                updateUI();
+            }
+            closeConfirmModal();
+        }
+
+        function cancelRemove() { itemToDelete = null; closeConfirmModal(); }
+        function closeConfirmModal() {
+            confirmModal.classList.add('hidden');
+            confirmModal.classList.remove('flex');
+        }
+
+        function attemptClearOrder() {
+            if (hasUnsavedChanges) {
+                unsavedModal.classList.remove('hidden');
+                unsavedModal.classList.add('flex');
+                lucide.createIcons();
+            } else { clearOrder(); }
+        }
+
+        function closeUnsavedModal() {
+            unsavedModal.classList.add('hidden');
+            unsavedModal.classList.remove('flex');
+        }
+
+        function forceClearOrder() { closeUnsavedModal(); clearOrder(); }
+
+        function clearOrder() {
+            currentOrderNo = null;
+            scannedParts = [];
+            orderFinishedCb.checked = false;
+            hasUnsavedChanges = false;
+            updateUI();
+        }
+
+        async function finishOrder() {
+            if (scannedParts.length === 0 && !orderFinishedCb.checked) return;
+            if (!currentUser) { showToast('Ansluter till molnet...', 'error'); return; }
+
+            try {
+                const originalText = finishBtn.innerHTML;
+                finishBtn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i> Skickar...';
+                finishBtn.disabled = true;
+                lucide.createIcons();
+
+                const isFinished = orderFinishedCb.checked;
+                
+                const uniqueDocId = `${currentOrderNo}-${Date.now()}`;
+                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', uniqueDocId);
+                
+                await setDoc(orderRef, {
+                    orderId: currentOrderNo,
+                    parts: scannedParts,
+                    isFinished: isFinished,
+                    savedBy: currentUser.uid,
+                    timestamp: new Date().toISOString(),
+                    source: 'chauffor' 
+                });
+
+                hasUnsavedChanges = false;
+                showToast('Artiklar inskickade!', 'success');
+                
+                setTimeout(() => {
+                    clearOrder();
+                    finishBtn.innerHTML = originalText;
+                    finishBtn.disabled = false;
+                    lucide.createIcons();
+                }, 1000);
+
+            } catch (error) {
+                console.error("Kunde inte spara:", error);
+                showToast('Ett fel uppstod vid sparandet.', 'error');
+                finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Skicka in delar';
+                finishBtn.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        window.setManualOrder = setManualOrder;
+        window.addManualPart = addManualPart;
+        window.attemptClearOrder = attemptClearOrder;
+        window.closeUnsavedModal = closeUnsavedModal;
+        window.forceClearOrder = forceClearOrder;    
+        window.finishOrder = finishOrder;
+        window.changeQty = changeQty;
+        window.removePart = removePart;
+        window.confirmRemove = confirmRemove;
+        window.cancelRemove = cancelRemove;
+        window.markUnsaved = markUnsaved;
+
+        updateUI();
+    </script>
+</body>
+</html>

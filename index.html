@@ -11,32 +11,17 @@
     <meta name="apple-mobile-web-app-title" content="Plock">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1e40af">
-    <!-- Inbakad Manifest-fil för Android/Chrome -->
     <link rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Reservdelsplock%22%2C%22short_name%22%3A%22Plock%22%2C%22display%22%3A%22standalone%22%2C%22start_url%22%3A%22.%22%2C%22background_color%22%3A%22%23f8fafc%22%2C%22theme_color%22%3A%22%231e40af%22%7D'>
 
-    <!-- Tailwind CSS för styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Ikoner -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- HTML5 QRCode Scanner -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <!-- Tesseract.js för textigenkänning (OCR) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
-        /* Förhindra att man zoomar av misstag på mobilen */
-        body {
-            touch-action: pan-y;
-            -webkit-tap-highlight-color: transparent;
-        }
-        /* Anpassningar för scannerns videoflöde */
-        #reader video {
-            object-fit: cover;
-            border-radius: 0.5rem;
-        }
-        #reader {
-            border: none !important;
-        }
+        body { touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
+        #reader video { object-fit: cover; border-radius: 0.5rem; }
+        #reader { border: none !important; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
@@ -46,12 +31,8 @@
         <div class="flex items-center gap-2">
             <i data-lucide="wrench" class="w-6 h-6"></i>
             <h1 class="text-xl font-bold tracking-wide">Reservdelsplock</h1>
-            <div id="header-order-badge" class="hidden ml-2 bg-blue-600 px-3 py-1 rounded-full text-sm font-semibold border border-blue-400">
-                <!-- Fylls i med JS -->
-            </div>
+            <div id="header-order-badge" class="hidden ml-2 bg-blue-600 px-3 py-1 rounded-full text-sm font-semibold border border-blue-400"></div>
         </div>
-        
-        <!-- Toggle Adminvy -->
         <button onclick="toggleViewMode()" id="view-toggle-btn" class="bg-slate-900/50 hover:bg-slate-900 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
             <span id="view-toggle-text">Adminvy</span>
@@ -67,10 +48,8 @@
                 <h2 class="text-3xl font-bold text-slate-700">Ny Plockning</h2>
                 <p class="text-slate-500 font-medium">Ange Regnr, Internnr eller AO.</p>
             </div>
-            
             <div class="w-full max-w-sm flex flex-col gap-3">
                 <input type="text" id="manual-order-input" placeholder="T.ex. OEJ634, DM10 eller 251475" class="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-5 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 uppercase text-lg font-bold text-center tracking-wider transition-all shadow-sm">
-                
                 <button onclick="setManualOrder()" class="w-full bg-blue-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md flex items-center justify-center gap-2">
                     <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
                     Öppna / Skapa
@@ -80,8 +59,6 @@
 
         <!-- Steg 2: Hantera Reservdelar -->
         <div id="step-parts" class="hidden flex-col h-full gap-4">
-            
-            <!-- Order Info Kort -->
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0">
                 <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktiv Arbetsorder / Fordon</div>
                 <div class="flex justify-between items-center">
@@ -92,31 +69,25 @@
                 </div>
             </div>
 
-            <!-- Toggle för Lägg till del -->
             <button onclick="toggleInputSection()" class="flex justify-between items-center bg-indigo-50 p-3 rounded-xl shadow-sm border border-indigo-100 shrink-0 hover:bg-indigo-100 transition-colors w-full">
                 <span class="font-bold text-indigo-900 flex items-center gap-2">
-                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
-                    Skanna & Lägg till artiklar
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i> Skanna & Lägg till artiklar
                 </span>
                 <i data-lucide="chevron-up" id="input-toggle-icon" class="w-5 h-5 text-indigo-700 transition-transform"></i>
             </button>
 
-            <!-- Lägg till del (Döljbar sektion) -->
             <div id="add-part-section" class="flex flex-col gap-3 shrink-0">
                 <div class="grid grid-cols-2 gap-3">
                     <button onclick="startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
                         <i data-lucide="qr-code" class="w-8 h-8"></i>
                         <span class="font-bold text-sm text-center leading-tight">Skanna<br>QR/Streckkod</span>
                     </button>
-                    
                     <button onclick="document.getElementById('ocr-input').click()" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
                         <i data-lucide="scan-text" class="w-8 h-8"></i>
                         <span class="font-bold text-sm text-center leading-tight">Läs Text<br>(Fota siffror)</span>
                     </button>
-                    <!-- Dold input för att öppna kameran för fotografering -->
                     <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="processOCR(event)">
                 </div>
-                
                 <div class="flex gap-2 mt-1">
                     <input type="text" id="manual-part-input" placeholder="Eller ange artikelnr..." class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg">
                     <button onclick="addManualPart()" class="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors">
@@ -125,18 +96,14 @@
                 </div>
             </div>
 
-            <!-- Lista över plockade delar -->
             <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[150px]">
                 <div class="bg-slate-50 p-3 border-b border-slate-200 text-sm font-semibold text-slate-600 flex justify-between items-center">
                     <span>Plockade artiklar</span>
                     <span id="part-count-badge" class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs hidden">0 st</span>
                 </div>
-                <div id="parts-list" class="overflow-y-auto p-2 flex-grow">
-                    <!-- Artiklarna renderas här -->
-                </div>
+                <div id="parts-list" class="overflow-y-auto p-2 flex-grow"></div>
             </div>
 
-            <!-- Färdig-markering -->
             <label class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer shrink-0 hover:bg-slate-50 transition-colors">
                 <div class="flex flex-col">
                     <span class="font-bold text-slate-800 text-lg">Ordern är färdig</span>
@@ -145,7 +112,6 @@
                 <input type="checkbox" id="order-finished-cb" onchange="markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
             </label>
 
-            <!-- Slutför knapp -->
             <button onclick="finishOrder()" id="finish-btn" class="w-full bg-blue-800 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity shrink-0 flex items-center justify-center gap-2">
                 <i data-lucide="save" class="w-6 h-6"></i>
                 Spara Arbetsorder
@@ -159,24 +125,16 @@
             <h2 class="text-2xl font-bold text-slate-800">Arbetsordrar</h2>
             <div class="text-sm text-slate-500">Uppdateras live</div>
         </div>
-
-        <!-- Flikar för Aktiva / Arkiverade -->
         <div class="flex gap-2 border-b border-slate-200 pb-0 mb-2">
-            <button id="tab-active" onclick="switchAdminTab('ACTIVE')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors">
-                Aktiva
-            </button>
-            <button id="tab-archived" onclick="switchAdminTab('ARCHIVED')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">
-                Arkiverade
-            </button>
+            <button id="tab-active" onclick="switchAdminTab('ACTIVE')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors">Aktiva</button>
+            <button id="tab-archived" onclick="switchAdminTab('ARCHIVED')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">Arkiverade</button>
         </div>
-        
         <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Orderkort renderas här -->
             <div class="text-slate-500 italic">Laddar ordrar...</div>
         </div>
     </main>
 
-    <!-- Skanner Modal -->
+    <!-- Modals (Scanner, OCR Select, Confirm, Unsaved, Archive) -->
     <div id="scanner-ui" class="hidden absolute inset-0 bg-black z-50 flex flex-col">
         <div class="flex justify-between items-center p-4 bg-black/80 text-white">
             <h3 id="scanner-title" class="text-lg font-semibold">Skannar...</h3>
@@ -184,118 +142,69 @@
                 <i data-lucide="x" class="w-5 h-5"></i> Avbryt
             </button>
         </div>
-        <div class="flex-grow flex items-center justify-center relative overflow-hidden bg-black">
-            <div id="reader" class="w-full max-w-md"></div>
-        </div>
-        <div class="p-6 bg-black/80 text-center text-slate-300 text-sm">
-            Rikta kameran mot streckkoden eller QR-koden. Den läses av automatiskt.
-        </div>
+        <div class="flex-grow flex items-center justify-center relative overflow-hidden bg-black"><div id="reader" class="w-full max-w-md"></div></div>
+        <div class="p-6 bg-black/80 text-center text-slate-300 text-sm">Rikta kameran mot streckkoden eller QR-koden. Den läses av automatiskt.</div>
     </div>
 
-    <!-- OCR Välj Resultat Modal -->
     <div id="ocr-select-modal" class="hidden absolute inset-0 bg-slate-900/80 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[80vh]">
             <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50 rounded-t-2xl">
-                <h3 class="font-bold text-indigo-900 text-lg flex items-center gap-2">
-                    <i data-lucide="scan-text" class="w-5 h-5"></i> Välj artikelnummer
-                </h3>
-                <button onclick="closeOcrModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-lg transition-colors">
-                    <i data-lucide="x" class="w-6 h-6"></i>
-                </button>
+                <h3 class="font-bold text-indigo-900 text-lg flex items-center gap-2"><i data-lucide="scan-text" class="w-5 h-5"></i> Välj artikelnummer</h3>
+                <button onclick="closeOcrModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-lg transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             <div class="p-4 overflow-y-auto flex-grow">
                 <p class="text-sm text-slate-500 mb-4 font-medium">Vi hittade dessa nummer i bilden. Klicka på det som är rätt artikelnummer:</p>
-                <div id="ocr-results-container" class="flex flex-col gap-3">
-                    <!-- Knappar renderas här -->
-                </div>
+                <div id="ocr-results-container" class="flex flex-col gap-3"></div>
             </div>
             <div class="p-4 border-t border-slate-100">
-                <button onclick="closeOcrModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors">
-                    Avbryt (Inget stämmer)
-                </button>
+                <button onclick="closeOcrModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt (Inget stämmer)</button>
             </div>
         </div>
     </div>
 
-    <!-- Bekräftelse Modal (Ta bort artikel) -->
     <div id="confirm-modal" class="hidden absolute inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all">
-            <div class="flex items-center gap-3 text-red-600 mb-4">
-                <div class="bg-red-100 p-2 rounded-full text-red-600">
-                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-                </div>
-                <h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3>
-            </div>
+            <div class="flex items-center gap-3 text-red-600 mb-4"><div class="bg-red-100 p-2 rounded-full text-red-600"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3></div>
             <p class="text-slate-600 mb-6" id="confirm-modal-text">Är du säker på att du vill ta bort artikeln?</p>
             <div class="flex gap-3">
-                <button onclick="cancelRemove()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
-                    Avbryt
-                </button>
-                <button onclick="confirmRemove()" class="flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 rounded-xl transition-colors shadow-sm">
-                    Ja, ta bort
-                </button>
+                <button onclick="cancelRemove()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt</button>
+                <button onclick="confirmRemove()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors">Ja, ta bort</button>
             </div>
         </div>
     </div>
 
-    <!-- VARNING MODAL (Osparade ändringar) -->
     <div id="unsaved-modal" class="hidden absolute inset-0 bg-slate-900/60 z-[75] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all border-t-8 border-orange-500">
-            <div class="flex items-center gap-3 text-orange-600 mb-3">
-                <div class="bg-orange-100 p-2 rounded-full text-orange-600">
-                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-                </div>
-                <h3 class="text-xl font-bold text-slate-800">Osparade ändringar</h3>
-            </div>
-            <p class="text-slate-600 mb-6 text-sm font-medium">Du har gjort ändringar i arbetsordern som inte sparats ännu. Vill du spara nu eller stänga och förlora ändringarna?</p>
+            <div class="flex items-center gap-3 text-orange-600 mb-3"><div class="bg-orange-100 p-2 rounded-full text-orange-600"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Osparade ändringar</h3></div>
+            <p class="text-slate-600 mb-6 text-sm font-medium">Du har gjort ändringar i arbetsordern som inte sparats ännu.</p>
             <div class="flex flex-col gap-3">
-                <button onclick="closeUnsavedModal(); finishOrder();" class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold py-4 rounded-xl transition-colors shadow-sm text-lg flex items-center justify-center gap-2">
-                    <i data-lucide="save" class="w-5 h-5"></i> Spara Ordern
-                </button>
+                <button onclick="closeUnsavedModal(); finishOrder();" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2"><i data-lucide="save" class="w-5 h-5"></i> Spara Ordern</button>
                 <div class="flex gap-3 mt-1">
-                    <button onclick="closeUnsavedModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
-                        Avbryt
-                    </button>
-                    <button onclick="forceClearOrder()" class="flex-1 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 font-bold py-3 rounded-xl transition-colors">
-                        Stäng ändå
-                    </button>
+                    <button onclick="closeUnsavedModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl">Avbryt</button>
+                    <button onclick="forceClearOrder()" class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 font-bold py-3 rounded-xl">Stäng ändå</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ARKIVERA MODAL (För admin) -->
     <div id="archive-modal" class="hidden absolute inset-0 bg-slate-900/60 z-[75] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all">
-            <div class="flex items-center gap-3 text-indigo-600 mb-3">
-                <div class="bg-indigo-100 p-2 rounded-full text-indigo-600">
-                    <i data-lucide="archive" class="w-6 h-6"></i>
-                </div>
-                <h3 class="text-xl font-bold text-slate-800">Arkivera Order</h3>
-            </div>
+            <div class="flex items-center gap-3 text-indigo-600 mb-3"><div class="bg-indigo-100 p-2 rounded-full text-indigo-600"><i data-lucide="archive" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Arkivera Order</h3></div>
             <p class="text-slate-600 mb-6 text-sm font-medium" id="archive-modal-text">Vill du arkivera denna order?</p>
             <div class="flex gap-3">
-                <button onclick="closeArchiveModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
-                    Avbryt
-                </button>
-                <button onclick="confirmArchive()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-3 rounded-xl transition-colors shadow-sm">
-                    Ja, arkivera
-                </button>
+                <button onclick="closeArchiveModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl">Avbryt</button>
+                <button onclick="confirmArchive()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Ja, arkivera</button>
             </div>
         </div>
     </div>
 
-    <!-- OCR Laddningsskärm -->
     <div id="ocr-loading" class="hidden absolute inset-0 bg-slate-900/90 z-[60] flex flex-col items-center justify-center text-white backdrop-blur-sm">
         <i data-lucide="loader-2" class="w-16 h-16 animate-spin text-indigo-400 mb-6"></i>
         <h3 class="text-2xl font-bold mb-2">Analyserar bild...</h3>
-        <p class="text-slate-300 text-center px-6">AI letar efter siffror i bilden.<br>Detta kan ta ett par sekunder.</p>
     </div>
 
-    <!-- Toast Notis -->
     <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 translate-y-[150%] z-50 flex items-center gap-2 whitespace-nowrap">
-        <i data-lucide="info" class="w-5 h-5"></i>
-        <span id="toast-msg">Meddelande</span>
+        <i data-lucide="info" class="w-5 h-5"></i><span id="toast-msg">Meddelande</span>
     </div>
 
     <script type="module">
@@ -303,7 +212,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Initiera Molndatabas (Firebase)
         const firebaseConfig = {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
             authDomain: "smalands-logistik-verkstad.firebaseapp.com",
@@ -313,29 +221,18 @@
             appId: "1:916947926799:web:b406d72a2379848b03087a",
             measurementId: "G-JRBQ6C48XM"
         };
-        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = 'smalands-logistik-verkstad';
 
         let currentUser = null;
-
-        // Säker inloggning i bakgrunden
-        const initAuth = async () => {
-            try {
-                await signInAnonymously(auth);
-            } catch (err) {
-                console.error("Fel vid inloggning till databasen:", err);
-            }
-        };
+        const initAuth = async () => { try { await signInAnonymously(auth); } catch (err) {} };
         initAuth();
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            if (currentMode === 'ADMIN' && currentUser && !unsubAdmin) {
-                startAdminListener();
-            }
+            if (currentMode === 'ADMIN' && currentUser && !unsubAdmin) startAdminListener();
         });
 
         // --- STATE ---
@@ -347,17 +244,12 @@
         let orderToArchive = null; 
         let hasUnsavedChanges = false;
         let isInputSectionVisible = true; 
-        
-        // --- NY ADMIN-STATE ---
         let adminTab = 'ACTIVE'; 
         let allOrdersData = []; 
-        
-        // --- SKANNER-STATE ---
         let html5QrcodeScanner = null;
         let scanMode = null; 
         let isScanning = false;
 
-        // --- UI REFERENSER ---
         const uiMain = document.getElementById('main-ui');
         const uiAdmin = document.getElementById('admin-ui');
         const uiStepOrder = document.getElementById('step-order');
@@ -385,17 +277,13 @@
 
         lucide.createIcons();
 
-        // --- UI FUNKTIONER ---
-
         function showToast(msg, type = 'info') {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toast-msg');
             toastMsg.textContent = msg;
-            
             if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
             else if(type === 'error') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
             else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
-            
             toast.classList.remove('translate-y-[150%]');
             setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
         }
@@ -416,187 +304,111 @@
         function toggleViewMode() {
             if (currentMode === 'SHOP') {
                 currentMode = 'ADMIN';
-                uiMain.classList.add('hidden');
-                uiMain.classList.remove('flex');
-                uiAdmin.classList.remove('hidden');
-                uiAdmin.classList.add('flex');
+                uiMain.classList.add('hidden'); uiMain.classList.remove('flex');
+                uiAdmin.classList.remove('hidden'); uiAdmin.classList.add('flex');
                 headerBadge.classList.add('hidden');
                 viewToggleText.textContent = "Verkstadsvy";
                 viewToggleBtn.innerHTML = `<i data-lucide="wrench" class="w-4 h-4"></i><span id="view-toggle-text">Verkstadsvy</span>`;
                 lucide.createIcons();
-                
                 if (currentUser) startAdminListener();
             } else {
                 currentMode = 'SHOP';
-                uiAdmin.classList.add('hidden');
-                uiAdmin.classList.remove('flex');
-                uiMain.classList.remove('hidden');
-                uiMain.classList.add('flex');
+                uiAdmin.classList.add('hidden'); uiAdmin.classList.remove('flex');
+                uiMain.classList.remove('hidden'); uiMain.classList.add('flex');
                 viewToggleText.textContent = "Adminvy";
                 viewToggleBtn.innerHTML = `<i data-lucide="layout-dashboard" class="w-4 h-4"></i><span id="view-toggle-text">Adminvy</span>`;
                 lucide.createIcons();
-                
-                if (unsubAdmin) {
-                    unsubAdmin();
-                    unsubAdmin = null;
-                }
+                if (unsubAdmin) { unsubAdmin(); unsubAdmin = null; }
                 updateUI();
             }
         }
 
         function updateUI() {
             if (currentMode !== 'SHOP') return;
-
             if (!currentOrderNo) {
-                uiStepOrder.classList.remove('hidden');
-                uiStepOrder.classList.add('flex');
-                uiStepParts.classList.add('hidden');
-                uiStepParts.classList.remove('flex');
+                uiStepOrder.classList.remove('hidden'); uiStepOrder.classList.add('flex');
+                uiStepParts.classList.add('hidden'); uiStepParts.classList.remove('flex');
                 headerBadge.classList.add('hidden');
             } else {
-                uiStepOrder.classList.add('hidden');
-                uiStepOrder.classList.remove('flex');
-                uiStepParts.classList.remove('hidden');
-                uiStepParts.classList.add('flex');
-                
+                uiStepOrder.classList.add('hidden'); uiStepOrder.classList.remove('flex');
+                uiStepParts.classList.remove('hidden'); uiStepParts.classList.add('flex');
                 orderDisplay.textContent = currentOrderNo;
                 headerBadge.textContent = currentOrderNo;
                 headerBadge.classList.remove('hidden');
-
                 renderPartsList();
             }
         }
 
         function renderPartsList() {
             partsListContainer.innerHTML = '';
-            
             if (scannedParts.length === 0) {
                 partCountBadge.classList.add('hidden');
-                partsListContainer.innerHTML = `
-                    <div class="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center gap-2">
-                        <i data-lucide="package-open" class="w-12 h-12 opacity-50"></i>
-                        <p>Inga reservdelar plockade ännu.</p>
-                    </div>`;
-                
+                partsListContainer.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center gap-2"><i data-lucide="package-open" class="w-12 h-12 opacity-50"></i><p>Inga reservdelar plockade ännu.</p></div>`;
                 finishBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 finishBtn.classList.remove('hover:bg-blue-900', 'active:bg-blue-950');
                 lucide.createIcons();
                 return;
             }
-
-            // Uppdatera räknare i badge
             partCountBadge.textContent = `${scannedParts.length} st`;
             partCountBadge.classList.remove('hidden');
-
             finishBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             finishBtn.classList.add('hover:bg-blue-900', 'active:bg-blue-950');
 
             scannedParts.forEach((part, index) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'flex items-center justify-between p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors';
-                
                 itemDiv.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <div class="bg-blue-100 text-blue-800 p-2 rounded-lg">
-                            <i data-lucide="box" class="w-5 h-5"></i>
-                        </div>
+                        <div class="bg-blue-100 text-blue-800 p-2 rounded-lg"><i data-lucide="box" class="w-5 h-5"></i></div>
                         <div class="font-bold text-slate-800 text-lg tracking-wide">${part.partNo}</div>
                     </div>
-                    
                     <div class="flex items-center gap-3">
                         <div class="flex items-center bg-slate-100 rounded-lg border border-slate-200">
-                            <button onclick="changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors">
-                                <i data-lucide="minus" class="w-4 h-4"></i>
-                            </button>
+                            <button onclick="changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
                             <span class="w-8 text-center font-bold text-slate-800 select-none">${part.qty}</span>
-                            <button onclick="changeQty(${index}, 1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-r-lg transition-colors">
-                                <i data-lucide="plus" class="w-4 h-4"></i>
-                            </button>
+                            <button onclick="changeQty(${index}, 1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-r-lg transition-colors"><i data-lucide="plus" class="w-4 h-4"></i></button>
                         </div>
-                        <button onclick="removePart(${index})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                            <i data-lucide="trash-2" class="w-5 h-5"></i>
-                        </button>
-                    </div>
-                `;
+                        <button onclick="removePart(${index})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    </div>`;
                 partsListContainer.appendChild(itemDiv);
             });
             lucide.createIcons();
         }
 
-        // --- ARBETSORDER & RESERVDEL LOGIK ---
-
-        function markUnsaved() {
-            hasUnsavedChanges = true;
-        }
+        function markUnsaved() { hasUnsavedChanges = true; }
 
         async function loadOrder(orderNo) {
-            if (!currentUser) {
-                showToast("Väntar på systemanslutning...", "error");
-                return;
-            }
-
-            // Visa tillfälligt UI
-            currentOrderNo = orderNo;
-            scannedParts = [];
-            orderFinishedCb.checked = false;
-            
-            // Fäll ut inmatningen som standard när man öppnar en ny order
+            if (!currentUser) { showToast("Väntar på systemanslutning...", "error"); return; }
+            currentOrderNo = orderNo; scannedParts = []; orderFinishedCb.checked = false;
             if (!isInputSectionVisible) toggleInputSection();
-            
             showToast(`Hämtar data för ${orderNo}...`);
-            
             try {
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderNo);
                 const docSnap = await getDoc(docRef);
-
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     scannedParts = data.parts || [];
                     orderFinishedCb.checked = data.isFinished || false;
-                    
-                    // Om den är färdig, fäll in inmatningsvyn
                     if(data.isFinished) {
                         showToast(`Informationen var markerad som färdig`, 'info');
                         if (isInputSectionVisible) toggleInputSection();
-                    } else {
-                        showToast(`Hämtade befintliga data`, 'success');
-                    }
-                } else {
-                    showToast(`Nytt fordon/order skapat`, 'success');
-                }
-                
-                // Efter en lyckad laddning från databasen har vi inga osparade ändringar ännu.
+                    } else { showToast(`Hämtade befintliga data`, 'success'); }
+                } else { showToast(`Nytt fordon/order skapat`, 'success'); }
                 hasUnsavedChanges = false;
-                
-            } catch (error) {
-                console.error("Fel vid hämtning:", error);
-                showToast("Kunde inte kontrollera historik", "error");
-            }
-            
+            } catch (error) { showToast("Kunde inte kontrollera historik", "error"); }
             updateUI();
         }
 
         function setManualOrder() {
             const val = manualOrderInput.value;
-            if (val.trim() === '') {
-                showToast('Du måste ange ett id (t.ex. regnr)', 'error');
-                return;
-            }
-
+            if (val.trim() === '') { showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
             let formattedOrder = val.trim().toUpperCase();
-            
-            // Smart igenkänning: Kolla om det är uteslutande siffror (eller AO + siffror)
-            // T.ex. "251475" blir "AO-25-1475". Men "OEJ634" eller "DM10" lämnas orörda.
             const cleanedForAo = formattedOrder.replace(/[^A-Z0-9]/g, '');
             if (cleanedForAo.length >= 5 && /^(?:AO)?\d+$/.test(cleanedForAo)) {
                 const match = cleanedForAo.match(/^(?:AO)?(\d{2})(\d+)$/);
-                if (match) {
-                    formattedOrder = `AO-${match[1]}-${match[2]}`;
-                }
+                if (match) formattedOrder = `AO-${match[1]}-${match[2]}`;
             }
-
-            manualOrderInput.value = ''; 
-            loadOrder(formattedOrder);
+            manualOrderInput.value = ''; loadOrder(formattedOrder);
         }
 
         function parsePartNumber(rawInput) {
@@ -611,10 +423,8 @@
 
         function addPartToList(rawPartNumber) {
             if (!rawPartNumber) return;
-            
             const cleanedPartNo = parsePartNumber(rawPartNumber).toUpperCase();
             const existingPartIndex = scannedParts.findIndex(p => p.partNo === cleanedPartNo);
-            
             if (existingPartIndex >= 0) {
                 scannedParts[existingPartIndex].qty += 1;
                 showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
@@ -622,109 +432,59 @@
                 scannedParts.unshift({ partNo: cleanedPartNo, qty: 1 });
                 showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
             }
-            
-            markUnsaved(); 
-            if(navigator.vibrate) navigator.vibrate(50);
-            updateUI();
+            markUnsaved(); if(navigator.vibrate) navigator.vibrate(50); updateUI();
         }
 
         function addManualPart() {
             const val = manualInput.value;
             if (val.trim() === '') return;
-            addPartToList(val);
-            manualInput.value = '';
-            manualInput.focus();
+            addPartToList(val); manualInput.value = ''; manualInput.focus();
         }
 
         manualInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addManualPart(); });
-        if(manualOrderInput) {
-            manualOrderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') setManualOrder(); });
-        }
+        manualOrderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') setManualOrder(); });
 
         function changeQty(index, delta) {
             const newQty = scannedParts[index].qty + delta;
-            if (newQty > 0) {
-                scannedParts[index].qty = newQty;
-                markUnsaved(); 
-                updateUI();
-            } else {
-                removePart(index);
-            }
+            if (newQty > 0) { scannedParts[index].qty = newQty; markUnsaved(); updateUI(); } 
+            else { removePart(index); }
         }
 
-        // --- BEKRÄFTELSE FÖR ATT TA BORT ARTIKEL ---
         function removePart(index) {
             itemToDelete = index;
-            const part = scannedParts[index];
-            
-            confirmModalText.innerHTML = `Är du säker på att du vill ta bort <strong>${part.partNo}</strong> från listan?`;
-            
-            confirmModal.classList.remove('hidden');
-            confirmModal.classList.add('flex');
-            lucide.createIcons();
+            confirmModalText.innerHTML = `Är du säker på att du vill ta bort <strong>${scannedParts[index].partNo}</strong> från listan?`;
+            confirmModal.classList.remove('hidden'); confirmModal.classList.add('flex'); lucide.createIcons();
         }
 
         function confirmRemove() {
-            if (itemToDelete !== null) {
-                scannedParts.splice(itemToDelete, 1);
-                itemToDelete = null;
-                markUnsaved(); 
-                updateUI();
-            }
+            if (itemToDelete !== null) { scannedParts.splice(itemToDelete, 1); itemToDelete = null; markUnsaved(); updateUI(); }
             closeConfirmModal();
         }
 
-        function cancelRemove() {
-            itemToDelete = null;
-            closeConfirmModal();
-        }
+        function cancelRemove() { itemToDelete = null; closeConfirmModal(); }
+        function closeConfirmModal() { confirmModal.classList.add('hidden'); confirmModal.classList.remove('flex'); }
 
-        function closeConfirmModal() {
-            confirmModal.classList.add('hidden');
-            confirmModal.classList.remove('flex');
-        }
-
-        // --- HANTERA STÄNGNING AV ORDER ---
         function attemptClearOrder() {
             if (hasUnsavedChanges) {
-                unsavedModal.classList.remove('hidden');
-                unsavedModal.classList.add('flex');
-                lucide.createIcons();
-            } else {
-                clearOrder();
-            }
+                unsavedModal.classList.remove('hidden'); unsavedModal.classList.add('flex'); lucide.createIcons();
+            } else { clearOrder(); }
         }
 
-        function closeUnsavedModal() {
-            unsavedModal.classList.add('hidden');
-            unsavedModal.classList.remove('flex');
-        }
-
-        function forceClearOrder() {
-            closeUnsavedModal();
-            clearOrder();
-        }
+        function closeUnsavedModal() { unsavedModal.classList.add('hidden'); unsavedModal.classList.remove('flex'); }
+        function forceClearOrder() { closeUnsavedModal(); clearOrder(); }
 
         function clearOrder() {
-            currentOrderNo = null;
-            scannedParts = [];
-            orderFinishedCb.checked = false;
-            hasUnsavedChanges = false;
-            updateUI();
+            currentOrderNo = null; scannedParts = []; orderFinishedCb.checked = false; hasUnsavedChanges = false; updateUI();
         }
 
         async function finishOrder() {
             if (scannedParts.length === 0 && !orderFinishedCb.checked) return;
-            if (!currentUser) {
-                showToast('Ansluter till molnet, vänligen vänta...', 'error');
-                return;
-            }
+            if (!currentUser) { showToast('Ansluter till molnet...', 'error'); return; }
 
             try {
                 const originalText = finishBtn.innerHTML;
                 finishBtn.innerHTML = '<i data-lucide="loader-2" class="w-6 h-6 animate-spin"></i> Sparar...';
-                finishBtn.disabled = true;
-                lucide.createIcons();
+                finishBtn.disabled = true; lucide.createIcons();
 
                 const isFinished = orderFinishedCb.checked;
                 const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', currentOrderNo);
@@ -738,32 +498,20 @@
                 }, { merge: true });
 
                 hasUnsavedChanges = false;
-
                 showToast('Arbetsorder sparad i systemet!', 'success');
-                
                 setTimeout(() => {
-                    clearOrder();
-                    finishBtn.innerHTML = originalText;
-                    finishBtn.disabled = false;
-                    lucide.createIcons();
+                    clearOrder(); finishBtn.innerHTML = originalText; finishBtn.disabled = false; lucide.createIcons();
                 }, 1000);
-
             } catch (error) {
-                console.error("Kunde inte spara:", error);
                 showToast('Ett fel uppstod vid sparandet.', 'error');
-                finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Spara Arbetsorder';
-                finishBtn.disabled = false;
-                lucide.createIcons();
+                finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Spara Arbetsorder'; finishBtn.disabled = false; lucide.createIcons();
             }
         }
-
-        // --- ADMINVY & ARKIVERING LOGIK ---
 
         function switchAdminTab(tab) {
             adminTab = tab;
             const tabActive = document.getElementById('tab-active');
             const tabArchived = document.getElementById('tab-archived');
-
             if (tab === 'ACTIVE') {
                 tabActive.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors";
                 tabArchived.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors";
@@ -776,28 +524,19 @@
 
         function startAdminListener() {
             if (!currentUser) return;
-            
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
-            
             unsubAdmin = onSnapshot(colRef, (snapshot) => {
                 allOrdersData = [];
                 snapshot.forEach(doc => allOrdersData.push(doc.data()));
-                
                 renderAdminView();
-            }, (error) => {
-                console.error("Fel vid live-uppdatering av admin:", error);
-                adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`;
-            });
+            }, (error) => { adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`; });
         }
 
         function renderAdminView() {
             adminOrdersGrid.innerHTML = '';
-            
-            // Sortera ut baserat på vald flik
             const displayOrders = adminTab === 'ACTIVE' 
                 ? allOrdersData.filter(o => !o.isArchived)
                 : allOrdersData.filter(o => o.isArchived);
-
             displayOrders.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
             
             if (displayOrders.length === 0) {
@@ -807,32 +546,27 @@
             }
 
             displayOrders.forEach(order => {
-                const date = new Date(order.timestamp).toLocaleString('sv-SE', {
-                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                });
-                
+                const date = new Date(order.timestamp).toLocaleString('sv-SE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const statusBadge = order.isFinished 
                     ? `<span class="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded border border-green-200">FÄRDIG</span>`
                     : `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded border border-yellow-200">PÅGÅENDE</span>`;
+
+                const driverBadge = order.source === 'chauffor'
+                    ? `<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 flex items-center gap-1"><i data-lucide="truck" class="w-3 h-3"></i> CHAUFFÖR</span>`
+                    : '';
 
                 let partsHtml = '';
                 if(order.parts && order.parts.length > 0) {
                     partsHtml = `<ul class="text-sm text-slate-600 mt-3 space-y-1 bg-slate-50 p-2 rounded border border-slate-100">`;
                     order.parts.forEach(p => {
-                        partsHtml += `<li class="flex justify-between border-b border-slate-200 last:border-0 pb-1 last:pb-0">
-                            <span class="font-medium">${p.partNo}</span>
-                            <span class="font-bold">x${p.qty}</span>
-                        </li>`;
+                        partsHtml += `<li class="flex justify-between border-b border-slate-200 last:border-0 pb-1 last:pb-0"><span class="font-medium">${p.partNo}</span><span class="font-bold">x${p.qty}</span></li>`;
                     });
                     partsHtml += `</ul>`;
-                } else {
-                    partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`;
-                }
+                } else { partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`; }
 
-                // Välj knapp beroende på flik (Arkivera eller Återställ)
                 const actionBtnHtml = adminTab === 'ACTIVE'
                     ? `<button onclick="attemptArchive('${order.orderId}')" class="text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 hover:bg-indigo-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
-                    : `<button onclick="restoreOrder('${order.orderId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ till Aktiva"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
+                    : `<button onclick="restoreOrder('${order.orderId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
 
                 const card = document.createElement('div');
                 card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col";
@@ -843,8 +577,9 @@
                                 <h3 class="font-bold text-lg text-slate-800">${order.orderId}</h3>
                                 ${actionBtnHtml}
                             </div>
-                            <div class="text-xs text-slate-400 flex items-center gap-1 mt-1">
-                                <i data-lucide="clock" class="w-3 h-3"></i> ${date}
+                            <div class="flex items-center gap-2 mt-1">
+                                <div class="text-xs text-slate-400 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${date}</div>
+                                ${driverBadge}
                             </div>
                         </div>
                         ${statusBadge}
@@ -861,219 +596,94 @@
 
         function attemptArchive(orderId) {
             orderToArchive = orderId;
-            archiveModalText.innerHTML = `Är du säker på att du vill arkivera <strong>${orderId}</strong>? Den döljs från listan.`;
-            archiveModal.classList.remove('hidden');
-            archiveModal.classList.add('flex');
-            lucide.createIcons();
+            archiveModalText.innerHTML = `Är du säker på att du vill arkivera <strong>${orderId}</strong>?`;
+            archiveModal.classList.remove('hidden'); archiveModal.classList.add('flex'); lucide.createIcons();
         }
 
         async function confirmArchive() {
             if (!orderToArchive || !currentUser) return;
-            
-            const idToArchive = orderToArchive;
-            closeArchiveModal();
-            showToast('Arkiverar...', 'info');
-            
+            const idToArchive = orderToArchive; closeArchiveModal(); showToast('Arkiverar...', 'info');
             try {
-                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', idToArchive);
-                await setDoc(orderRef, { isArchived: true }, { merge: true });
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', idToArchive), { isArchived: true }, { merge: true });
                 showToast('Ordern har arkiverats!', 'success');
-            } catch (error) {
-                console.error("Fel vid arkivering:", error);
-                showToast('Kunde inte arkivera ordern.', 'error');
-            }
+            } catch (error) { showToast('Kunde inte arkivera ordern.', 'error'); }
         }
 
         async function restoreOrder(orderId) {
             if (!currentUser) return;
             showToast('Återställer order...', 'info');
-            
             try {
-                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId);
-                await setDoc(orderRef, { isArchived: false }, { merge: true });
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), { isArchived: false }, { merge: true });
                 showToast('Ordern har flyttats till Aktiva!', 'success');
-            } catch (error) {
-                console.error("Fel vid återställning:", error);
-                showToast('Kunde inte återställa ordern.', 'error');
-            }
+            } catch (error) { showToast('Kunde inte återställa ordern.', 'error'); }
         }
 
-        function closeArchiveModal() {
-            archiveModal.classList.add('hidden');
-            archiveModal.classList.remove('flex');
-            orderToArchive = null;
-        }
+        function closeArchiveModal() { archiveModal.classList.add('hidden'); archiveModal.classList.remove('flex'); orderToArchive = null; }
 
-        // --- SKANNER LOGIK ---
-
-        function initScannerIfNeeded() {
-            if (!html5QrcodeScanner) {
-                html5QrcodeScanner = new Html5Qrcode("reader");
-            }
-        }
-
+        function initScannerIfNeeded() { if (!html5QrcodeScanner) html5QrcodeScanner = new Html5Qrcode("reader"); }
         function startScanning(mode) {
-            scanMode = mode;
-            scannerTitle.textContent = mode === 'ORDER' ? 'Skanna Arbetsorder QR' : 'Skanna Reservdel';
-            
-            uiMain.classList.add('hidden');
-            uiScanner.classList.remove('hidden');
-            uiScanner.classList.add('flex');
-
+            scanMode = mode; scannerTitle.textContent = mode === 'ORDER' ? 'Skanna Arbetsorder QR' : 'Skanna Reservdel';
+            uiMain.classList.add('hidden'); uiScanner.classList.remove('hidden'); uiScanner.classList.add('flex');
             initScannerIfNeeded();
-
-            const config = { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 };
-
-            html5QrcodeScanner.start(
-                { facingMode: "environment" },
-                config,
-                onScanSuccess,
-                () => {} // Tyst onScanFailure
-            ).then(() => {
-                isScanning = true;
-            }).catch(err => {
-                console.error("Kunde inte starta skannern:", err);
-                stopScanning();
-                showToast('Kunde inte starta kameran. Kontrollera behörigheter.', 'error');
-            });
+            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess, () => {})
+                .then(() => { isScanning = true; }).catch(err => { stopScanning(); showToast('Kunde inte starta kameran.', 'error'); });
         }
 
         function stopScanning() {
             if (isScanning && html5QrcodeScanner) {
-                html5QrcodeScanner.stop().then(() => {
-                    isScanning = false;
-                    closeScannerUI();
-                }).catch(err => {
-                    console.error("Fel vid stopp av skanner:", err);
-                    closeScannerUI();
-                });
-            } else {
-                closeScannerUI();
-            }
+                html5QrcodeScanner.stop().then(() => { isScanning = false; closeScannerUI(); }).catch(err => { closeScannerUI(); });
+            } else { closeScannerUI(); }
         }
-
-        function closeScannerUI() {
-            uiScanner.classList.add('hidden');
-            uiScanner.classList.remove('flex');
-            uiMain.classList.remove('hidden');
-        }
+        function closeScannerUI() { uiScanner.classList.add('hidden'); uiScanner.classList.remove('flex'); uiMain.classList.remove('hidden'); }
 
         function onScanSuccess(decodedText) {
             if (scanMode === 'ORDER') {
                 if(navigator.vibrate) navigator.vibrate(100);
                 stopScanning();
                 let val = decodedText.trim().toUpperCase();
-                
-                // Smart auto-format för AO om man skannar en order
                 const cleanedForAo = val.replace(/[^A-Z0-9]/g, '');
                 if (cleanedForAo.length >= 5 && /^(?:AO)?\d+$/.test(cleanedForAo)) {
                     const match = cleanedForAo.match(/^(?:AO)?(\d{2})(\d+)$/);
-                    if (match) {
-                        val = `AO-${match[1]}-${match[2]}`;
-                    }
+                    if (match) val = `AO-${match[1]}-${match[2]}`;
                 }
-                
                 loadOrder(val);
-            } 
-            else if (scanMode === 'PART') {
-                addPartToList(decodedText);
-                stopScanning(); 
-            }
+            } else if (scanMode === 'PART') { addPartToList(decodedText); stopScanning(); }
         }
 
-        // --- OCR LOGIK MED VAL AV NUMMER ---
-        
         function showOcrSelection(matches) {
-            const container = document.getElementById('ocr-results-container');
-            container.innerHTML = ''; 
-
+            const container = document.getElementById('ocr-results-container'); container.innerHTML = ''; 
             matches.forEach(match => {
                 const btn = document.createElement('button');
-                btn.className = "w-full text-left bg-white border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 active:bg-indigo-100 p-4 rounded-xl text-xl font-bold text-slate-800 transition-colors flex justify-between items-center";
+                btn.className = "w-full text-left bg-white border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 p-4 rounded-xl text-xl font-bold text-slate-800 flex justify-between items-center";
                 btn.innerHTML = `<span>${match}</span> <i data-lucide="chevron-right" class="w-5 h-5 text-indigo-400"></i>`;
-                btn.onclick = () => {
-                    addPartToList(match);
-                    closeOcrModal();
-                };
-                container.appendChild(btn);
+                btn.onclick = () => { addPartToList(match); closeOcrModal(); }; container.appendChild(btn);
             });
-
-            lucide.createIcons();
-            const modal = document.getElementById('ocr-select-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            lucide.createIcons(); document.getElementById('ocr-select-modal').classList.remove('hidden'); document.getElementById('ocr-select-modal').classList.add('flex');
         }
-
-        function closeOcrModal() {
-            const modal = document.getElementById('ocr-select-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
+        function closeOcrModal() { document.getElementById('ocr-select-modal').classList.add('hidden'); document.getElementById('ocr-select-modal').classList.remove('flex'); }
 
         async function processOCR(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const ocrLoading = document.getElementById('ocr-loading');
-            ocrLoading.classList.remove('hidden');
-            ocrLoading.classList.add('flex');
-            lucide.createIcons();
-            
+            const file = event.target.files[0]; if (!file) return;
+            document.getElementById('ocr-loading').classList.remove('hidden'); document.getElementById('ocr-loading').classList.add('flex'); lucide.createIcons();
             try {
-                const worker = await Tesseract.createWorker('eng');
-                const ret = await worker.recognize(file);
-                await worker.terminate();
-                
-                const text = ret.data.text;
-                console.log("Inläst text från bild:", text);
-                
-                const rawMatches = text.match(/\b\d{2,25}\b/g) || [];
-                let uniqueMatches = [...new Set(rawMatches)];
-                uniqueMatches.sort((a, b) => b.length - a.length);
-                
-                if (uniqueMatches.length === 0) {
-                    showToast("Hittade inga tydliga siffror i bilden.", "error");
-                } else if (uniqueMatches.length === 1) {
-                    addPartToList(uniqueMatches[0]);
-                } else {
-                    showOcrSelection(uniqueMatches);
-                }
-            } catch(err) {
-                console.error("Fel vid bildanalys:", err);
-                showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
-            } finally {
-                ocrLoading.classList.add('hidden');
-                ocrLoading.classList.remove('flex');
-                event.target.value = ''; 
-            }
+                const worker = await Tesseract.createWorker('eng'); const ret = await worker.recognize(file); await worker.terminate();
+                const text = ret.data.text; const rawMatches = text.match(/\b\d{2,25}\b/g) || [];
+                let uniqueMatches = [...new Set(rawMatches)]; uniqueMatches.sort((a, b) => b.length - a.length);
+                if (uniqueMatches.length === 0) showToast("Hittade inga tydliga siffror i bilden.", "error");
+                else if (uniqueMatches.length === 1) addPartToList(uniqueMatches[0]);
+                else showOcrSelection(uniqueMatches);
+            } catch(err) { showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
+            } finally { document.getElementById('ocr-loading').classList.add('hidden'); document.getElementById('ocr-loading').classList.remove('flex'); event.target.value = ''; }
         }
 
-        // Exponera för HTML inline event handlers
-        window.startScanning = startScanning;
-        window.stopScanning = stopScanning;
-        window.setManualOrder = setManualOrder;
-        window.addManualPart = addManualPart;
-        window.attemptClearOrder = attemptClearOrder;
-        window.closeUnsavedModal = closeUnsavedModal;
-        window.forceClearOrder = forceClearOrder;    
-        window.finishOrder = finishOrder;
-        window.changeQty = changeQty;
-        window.removePart = removePart;
-        window.confirmRemove = confirmRemove;
-        window.cancelRemove = cancelRemove;
-        window.toggleViewMode = toggleViewMode;
-        window.processOCR = processOCR;
-        window.closeOcrModal = closeOcrModal;
-        window.markUnsaved = markUnsaved;
-        window.toggleInputSection = toggleInputSection;
-        window.attemptArchive = attemptArchive;
-        window.confirmArchive = confirmArchive;
-        window.closeArchiveModal = closeArchiveModal;
-        window.switchAdminTab = switchAdminTab; // NY
-        window.restoreOrder = restoreOrder;     // NY
+        window.startScanning = startScanning; window.stopScanning = stopScanning; window.setManualOrder = setManualOrder; window.addManualPart = addManualPart;
+        window.attemptClearOrder = attemptClearOrder; window.closeUnsavedModal = closeUnsavedModal; window.forceClearOrder = forceClearOrder; window.finishOrder = finishOrder;
+        window.changeQty = changeQty; window.removePart = removePart; window.confirmRemove = confirmRemove; window.cancelRemove = cancelRemove;
+        window.toggleViewMode = toggleViewMode; window.processOCR = processOCR; window.closeOcrModal = closeOcrModal; window.markUnsaved = markUnsaved;
+        window.toggleInputSection = toggleInputSection; window.attemptArchive = attemptArchive; window.confirmArchive = confirmArchive;
+        window.closeArchiveModal = closeArchiveModal; window.switchAdminTab = switchAdminTab; window.restoreOrder = restoreOrder;
 
         updateUI();
-
     </script>
 </body>
 </html>

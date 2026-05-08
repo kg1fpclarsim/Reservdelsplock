@@ -527,7 +527,11 @@
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
             unsubAdmin = onSnapshot(colRef, (snapshot) => {
                 allOrdersData = [];
-                snapshot.forEach(doc => allOrdersData.push(doc.data()));
+                snapshot.forEach(doc => {
+                    let data = doc.data();
+                    data.docId = doc.id; // NYTT: Vi plockar ut det exakta, unika databas-ID:t
+                    allOrdersData.push(data);
+                });
                 renderAdminView();
             }, (error) => { adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`; });
         }
@@ -564,9 +568,10 @@
                     partsHtml += `</ul>`;
                 } else { partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`; }
 
+                // NYTT: Nu skickar vi med docId (det unika ID:t) i knapparna, istället för bara namnet!
                 const actionBtnHtml = adminTab === 'ACTIVE'
-                    ? `<button onclick="attemptArchive('${order.orderId}')" class="text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 hover:bg-indigo-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
-                    : `<button onclick="restoreOrder('${order.orderId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
+                    ? `<button onclick="attemptArchive('${order.docId}', '${order.orderId}')" class="text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 hover:bg-indigo-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
+                    : `<button onclick="restoreOrder('${order.docId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
 
                 const card = document.createElement('div');
                 card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col";
@@ -594,9 +599,10 @@
             lucide.createIcons();
         }
 
-        function attemptArchive(orderId) {
-            orderToArchive = orderId;
-            archiveModalText.innerHTML = `Är du säker på att du vill arkivera <strong>${orderId}</strong>?`;
+        // NYTT: Tar nu emot både docId (för databasen) och displayId (för texten till användaren)
+        function attemptArchive(docId, displayId) {
+            orderToArchive = docId;
+            archiveModalText.innerHTML = `Är du säker på att du vill arkivera <strong>${displayId}</strong>?`;
             archiveModal.classList.remove('hidden'); archiveModal.classList.add('flex'); lucide.createIcons();
         }
 
@@ -609,11 +615,11 @@
             } catch (error) { showToast('Kunde inte arkivera ordern.', 'error'); }
         }
 
-        async function restoreOrder(orderId) {
+        async function restoreOrder(docId) {
             if (!currentUser) return;
             showToast('Återställer order...', 'info');
             try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), { isArchived: false }, { merge: true });
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', docId), { isArchived: false }, { merge: true });
                 showToast('Ordern har flyttats till Aktiva!', 'success');
             } catch (error) { showToast('Kunde inte återställa ordern.', 'error'); }
         }

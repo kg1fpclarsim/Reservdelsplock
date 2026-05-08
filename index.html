@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Reservdelsplock</title>
     
-    <!-- PWA / App-inställningar (Döljer webbläsaren) -->
+    <!-- PWA / App-inställningar -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Plock">
@@ -17,6 +17,8 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- PapaParse för CSV till JSON konvertering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
         body { touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
@@ -42,7 +44,6 @@
     <!-- HUVUDVY (Verkstad) -->
     <main id="main-ui" class="flex-grow p-4 overflow-y-auto flex flex-col gap-4">
         
-        <!-- Steg 1: Välj Fordon / Arbetsorder -->
         <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6">
             <div class="text-center space-y-2 mb-2">
                 <h2 class="text-3xl font-bold text-slate-700">Ny Plockning</h2>
@@ -57,7 +58,6 @@
             </div>
         </div>
 
-        <!-- Steg 2: Hantera Reservdelar -->
         <div id="step-parts" class="hidden flex-col h-full gap-4">
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0">
                 <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktiv Arbetsorder / Fordon</div>
@@ -88,15 +88,21 @@
                     </button>
                     <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="processOCR(event)">
                 </div>
-                <div class="flex gap-2 mt-1">
-                    <input type="text" id="manual-part-input" placeholder="Eller ange artikelnr..." class="flex-grow bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg">
-                    <button onclick="addManualPart()" class="bg-slate-800 text-white rounded-xl px-6 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors">
+                <div class="flex gap-2 mt-1 items-start">
+                    <div class="relative flex-grow">
+                        <input type="text" id="manual-part-input" placeholder="Sök namn, tillverkare el. artikelnr..." class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg">
+                        <!-- Autocomplete Dropdown -->
+                        <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm">
+                            <!-- Fylls med sökresultat -->
+                        </div>
+                    </div>
+                    <button onclick="addManualPart()" class="bg-slate-800 text-white rounded-xl px-6 py-3 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors h-full">
                         Lägg till
                     </button>
                 </div>
             </div>
 
-            <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[150px]">
+            <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[150px] z-10">
                 <div class="bg-slate-50 p-3 border-b border-slate-200 text-sm font-semibold text-slate-600 flex justify-between items-center">
                     <span>Plockade artiklar</span>
                     <span id="part-count-badge" class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs hidden">0 st</span>
@@ -125,12 +131,42 @@
             <h2 class="text-2xl font-bold text-slate-800">Arbetsordrar</h2>
             <div class="text-sm text-slate-500">Uppdateras live</div>
         </div>
-        <div class="flex gap-2 border-b border-slate-200 pb-0 mb-2">
-            <button id="tab-active" onclick="switchAdminTab('ACTIVE')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors">Aktiva</button>
-            <button id="tab-archived" onclick="switchAdminTab('ARCHIVED')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors">Arkiverade</button>
+        <div class="flex gap-2 border-b border-slate-200 pb-0 mb-4 overflow-x-auto whitespace-nowrap hide-scrollbar">
+            <button id="tab-active" onclick="switchAdminTab('ACTIVE')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors shrink-0">Aktiva</button>
+            <button id="tab-archived" onclick="switchAdminTab('ARCHIVED')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0">Arkiverade</button>
+            <button id="tab-register" onclick="switchAdminTab('REGISTER')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 flex items-center gap-1"><i data-lucide="database" class="w-4 h-4"></i> Artikelregister</button>
         </div>
+        
+        <!-- Ordrar Listning -->
         <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="text-slate-500 italic">Laddar ordrar...</div>
+        </div>
+
+        <!-- Artikelregister / CSV Konverterare -->
+        <div id="admin-register-section" class="hidden flex-col gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2">
+                    <i data-lucide="file-json" class="w-6 h-6 text-indigo-600"></i> Uppdatera Sökregistret
+                </h3>
+                <p class="text-slate-500 text-sm mb-6">För att sökfunktionen i appen ska hitta de senaste artiklarna behöver vi konvertera din excelfil (.csv) till ett webbformat (.json). Ladda upp .csv-filen här och ladda sedan ner den nya filen.</p>
+                
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 border-dashed mb-4">
+                    <label class="font-bold text-sm mb-2 block text-slate-700">1. Välj din CSV-fil</label>
+                    <input type="file" accept=".csv" onchange="handleCsvUpload(event)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                </div>
+                
+                <div class="text-sm text-slate-500 italic">
+                    När du laddat ner den nya filen <b>artiklar.json</b>, logga in på din GitHub och lägg den i samma mapp som dina html-filer.
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-slate-800">Status för Sökregister</h3>
+                    <span id="reg-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Kontrollerar...</span>
+                </div>
+                <p class="text-sm text-slate-600" id="reg-status-text">Laddar information...</p>
+            </div>
         </div>
     </main>
 
@@ -138,9 +174,7 @@
     <div id="scanner-ui" class="hidden absolute inset-0 bg-black z-50 flex flex-col">
         <div class="flex justify-between items-center p-4 bg-black/80 text-white">
             <h3 id="scanner-title" class="text-lg font-semibold">Skannar...</h3>
-            <button onclick="stopScanning()" class="bg-red-600 hover:bg-red-700 rounded-lg px-4 py-2 font-medium flex items-center gap-2">
-                <i data-lucide="x" class="w-5 h-5"></i> Avbryt
-            </button>
+            <button onclick="stopScanning()" class="bg-red-600 hover:bg-red-700 rounded-lg px-4 py-2 font-medium flex items-center gap-2"><i data-lucide="x" class="w-5 h-5"></i> Avbryt</button>
         </div>
         <div class="flex-grow flex items-center justify-center relative overflow-hidden bg-black"><div id="reader" class="w-full max-w-md"></div></div>
         <div class="p-6 bg-black/80 text-center text-slate-300 text-sm">Rikta kameran mot streckkoden eller QR-koden. Den läses av automatiskt.</div>
@@ -207,6 +241,7 @@
         <i data-lucide="info" class="w-5 h-5"></i><span id="toast-msg">Meddelande</span>
     </div>
 
+    <!-- HUVUDSKRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -235,6 +270,73 @@
             if (currentMode === 'ADMIN' && currentUser && !unsubAdmin) startAdminListener();
         });
 
+        // --- LÄS IN ARTIKELREGISTER (LOKALT FRÅN GITHUB) ---
+        let articleDatabase = [];
+        fetch('artiklar.json')
+            .then(response => {
+                if(!response.ok) throw new Error("Fil saknas");
+                return response.json();
+            })
+            .then(data => {
+                articleDatabase = data;
+                document.getElementById('reg-status-badge').textContent = "Aktivt";
+                document.getElementById('reg-status-badge').className = "bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200";
+                document.getElementById('reg-status-text').innerHTML = `Hittade <b>${articleDatabase.length}</b> artiklar i sökregistret!`;
+            })
+            .catch(error => {
+                console.log("Inget artikelregister (artiklar.json) hittades. Sökning inaktiverad.");
+                document.getElementById('reg-status-badge').textContent = "Saknas";
+                document.getElementById('reg-status-badge').className = "bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200";
+                document.getElementById('reg-status-text').innerHTML = "Kunde inte hitta <i>artiklar.json</i>. Sökfunktionen kommer inte fungera förrän du laddat upp den.";
+            });
+
+        // --- AUTOCOMPLETE FUNKTIONER ---
+        const partInput = document.getElementById('manual-part-input');
+        const dropdown = document.getElementById('autocomplete-dropdown');
+
+        partInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            dropdown.innerHTML = '';
+            
+            if (val.length < 2 || articleDatabase.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            // Filtrera: Letar i Artikelnummer, Titel och Tillverkare
+            const matches = articleDatabase.filter(item => 
+                item.a.toLowerCase().includes(val) || 
+                item.t.toLowerCase().includes(val) || 
+                (item.m && item.m.toLowerCase().includes(val))
+            ).slice(0, 15); // Visa max 15 träffar för att vara snabbt
+
+            if (matches.length > 0) {
+                dropdown.classList.remove('hidden');
+                matches.forEach(match => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 hover:bg-indigo-50 cursor-pointer flex flex-col gap-1 transition-colors';
+                    div.innerHTML = `
+                        <div class="font-bold text-slate-800 leading-tight">${match.a}</div>
+                        <div class="text-xs text-slate-500 leading-tight">${match.t} ${match.m ? `<span class="italic text-indigo-400">(${match.m})</span>` : ''}</div>
+                    `;
+                    div.onclick = () => {
+                        addPartToList(match.a); // Lägg till i listan!
+                        partInput.value = '';
+                        dropdown.classList.add('hidden');
+                        partInput.focus();
+                    };
+                    dropdown.appendChild(div);
+                });
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Dölj dropdown om man klickar utanför
+        document.addEventListener('click', (e) => {
+            if(!partInput.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.add('hidden');
+        });
+
         // --- STATE ---
         let currentMode = 'SHOP'; 
         let currentOrderNo = null;
@@ -261,10 +363,10 @@
         const partsListContainer = document.getElementById('parts-list');
         const partCountBadge = document.getElementById('part-count-badge');
         const finishBtn = document.getElementById('finish-btn');
-        const manualInput = document.getElementById('manual-part-input');
         const manualOrderInput = document.getElementById('manual-order-input');
         const orderFinishedCb = document.getElementById('order-finished-cb');
         const adminOrdersGrid = document.getElementById('admin-orders-grid');
+        const adminRegisterSection = document.getElementById('admin-register-section');
         const viewToggleBtn = document.getElementById('view-toggle-btn');
         const viewToggleText = document.getElementById('view-toggle-text');
         const confirmModal = document.getElementById('confirm-modal');
@@ -279,8 +381,7 @@
 
         function showToast(msg, type = 'info') {
             const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toast-msg');
-            toastMsg.textContent = msg;
+            document.getElementById('toast-msg').textContent = msg;
             if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
             else if(type === 'error') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
             else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
@@ -291,12 +392,10 @@
         function toggleInputSection() {
             isInputSectionVisible = !isInputSectionVisible;
             if(isInputSectionVisible) {
-                addPartSection.classList.remove('hidden');
-                addPartSection.classList.add('flex');
+                addPartSection.classList.remove('hidden'); addPartSection.classList.add('flex');
                 inputToggleIcon.classList.remove('rotate-180');
             } else {
-                addPartSection.classList.add('hidden');
-                addPartSection.classList.remove('flex');
+                addPartSection.classList.add('hidden'); addPartSection.classList.remove('flex');
                 inputToggleIcon.classList.add('rotate-180');
             }
         }
@@ -357,12 +456,20 @@
             scannedParts.forEach((part, index) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'flex items-center justify-between p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors';
+                
+                // Letar reda på titeln i registret för att visa det fint!
+                const matchedArticle = articleDatabase.find(a => a.a === part.partNo);
+                const titleStr = matchedArticle ? `<div class="text-xs text-slate-500 truncate max-w-[120px] sm:max-w-[200px]">${matchedArticle.t}</div>` : '';
+
                 itemDiv.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <div class="bg-blue-100 text-blue-800 p-2 rounded-lg"><i data-lucide="box" class="w-5 h-5"></i></div>
-                        <div class="font-bold text-slate-800 text-lg tracking-wide">${part.partNo}</div>
+                        <div class="bg-blue-100 text-blue-800 p-2 rounded-lg shrink-0"><i data-lucide="box" class="w-5 h-5"></i></div>
+                        <div class="flex flex-col">
+                            <div class="font-bold text-slate-800 text-lg leading-tight tracking-wide">${part.partNo}</div>
+                            ${titleStr}
+                        </div>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 shrink-0">
                         <div class="flex items-center bg-slate-100 rounded-lg border border-slate-200">
                             <button onclick="changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
                             <span class="w-8 text-center font-bold text-slate-800 select-none">${part.qty}</span>
@@ -436,12 +543,12 @@
         }
 
         function addManualPart() {
-            const val = manualInput.value;
+            const val = partInput.value;
             if (val.trim() === '') return;
-            addPartToList(val); manualInput.value = ''; manualInput.focus();
+            addPartToList(val); partInput.value = ''; dropdown.classList.add('hidden'); partInput.focus();
         }
 
-        manualInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addManualPart(); });
+        partInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addManualPart(); });
         manualOrderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') setManualOrder(); });
 
         function changeQty(index, delta) {
@@ -512,14 +619,31 @@
             adminTab = tab;
             const tabActive = document.getElementById('tab-active');
             const tabArchived = document.getElementById('tab-archived');
-            if (tab === 'ACTIVE') {
-                tabActive.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors";
-                tabArchived.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors";
+            const tabRegister = document.getElementById('tab-register');
+            
+            // Återställ alla till inaktiv färg först
+            [tabActive, tabArchived, tabRegister].forEach(t => {
+                t.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 flex items-center gap-1";
+            });
+
+            if (tab === 'REGISTER') {
+                tabRegister.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors shrink-0 flex items-center gap-1";
+                adminOrdersGrid.classList.add('hidden');
+                adminRegisterSection.classList.remove('hidden');
+                adminRegisterSection.classList.add('flex');
             } else {
-                tabArchived.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors";
-                tabActive.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors";
+                adminOrdersGrid.classList.remove('hidden');
+                adminOrdersGrid.classList.add('grid');
+                adminRegisterSection.classList.add('hidden');
+                adminRegisterSection.classList.remove('flex');
+                
+                if (tab === 'ACTIVE') {
+                    tabActive.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors shrink-0 flex items-center gap-1";
+                } else {
+                    tabArchived.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors shrink-0 flex items-center gap-1";
+                }
+                renderAdminView();
             }
-            renderAdminView();
         }
 
         function startAdminListener() {
@@ -528,11 +652,9 @@
             unsubAdmin = onSnapshot(colRef, (snapshot) => {
                 allOrdersData = [];
                 snapshot.forEach(doc => {
-                    let data = doc.data();
-                    data.docId = doc.id; // NYTT: Vi plockar ut det exakta, unika databas-ID:t
-                    allOrdersData.push(data);
+                    let data = doc.data(); data.docId = doc.id; allOrdersData.push(data);
                 });
-                renderAdminView();
+                if(adminTab !== 'REGISTER') renderAdminView();
             }, (error) => { adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`; });
         }
 
@@ -556,19 +678,20 @@
                     : `<span class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded border border-yellow-200">PÅGÅENDE</span>`;
 
                 const driverBadge = order.source === 'chauffor'
-                    ? `<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 flex items-center gap-1"><i data-lucide="truck" class="w-3 h-3"></i> CHAUFFÖR</span>`
+                    ? `<span class="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200 flex items-center gap-1 mt-1"><i data-lucide="truck" class="w-3 h-3"></i> CHAUFFÖR</span>`
                     : '';
 
                 let partsHtml = '';
                 if(order.parts && order.parts.length > 0) {
                     partsHtml = `<ul class="text-sm text-slate-600 mt-3 space-y-1 bg-slate-50 p-2 rounded border border-slate-100">`;
                     order.parts.forEach(p => {
-                        partsHtml += `<li class="flex justify-between border-b border-slate-200 last:border-0 pb-1 last:pb-0"><span class="font-medium">${p.partNo}</span><span class="font-bold">x${p.qty}</span></li>`;
+                        const matchedArt = articleDatabase.find(a => a.a === p.partNo);
+                        const nStr = matchedArt ? `<span class="block text-[10px] text-slate-400 truncate max-w-[200px]">${matchedArt.t}</span>` : '';
+                        partsHtml += `<li class="flex justify-between items-center border-b border-slate-200 last:border-0 pb-1 last:pb-0"><div class="flex flex-col"><span class="font-medium leading-tight">${p.partNo}</span>${nStr}</div><span class="font-bold">x${p.qty}</span></li>`;
                     });
                     partsHtml += `</ul>`;
                 } else { partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`; }
 
-                // NYTT: Nu skickar vi med docId (det unika ID:t) i knapparna, istället för bara namnet!
                 const actionBtnHtml = adminTab === 'ACTIVE'
                     ? `<button onclick="attemptArchive('${order.docId}', '${order.orderId}')" class="text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 hover:bg-indigo-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
                     : `<button onclick="restoreOrder('${order.docId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
@@ -584,8 +707,8 @@
                             </div>
                             <div class="flex items-center gap-2 mt-1">
                                 <div class="text-xs text-slate-400 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${date}</div>
-                                ${driverBadge}
                             </div>
+                            ${driverBadge}
                         </div>
                         ${statusBadge}
                     </div>
@@ -599,7 +722,57 @@
             lucide.createIcons();
         }
 
-        // NYTT: Tar nu emot både docId (för databasen) och displayId (för texten till användaren)
+        // CSV UPLOAD & KONVERTERING LOGIK
+        window.handleCsvUpload = function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            showToast("Läser in excelfil...", "info");
+            
+            Papa.parse(file, {
+                skipEmptyLines: 'greedy',
+                complete: function(results) {
+                    const data = results.data;
+                    const headerIndex = data.findIndex(row => row[0] && row[0].trim() === "Art.nr.");
+                    
+                    if (headerIndex === -1) {
+                        showToast("Kunde inte hitta kolumnen 'Art.nr.'", "error");
+                        return;
+                    }
+
+                    const headers = data[headerIndex];
+                    const artNrIdx = headers.indexOf("Art.nr.");
+                    const titelIdx = headers.indexOf("Titel");
+                    const tillverkareIdx = headers.indexOf("Tillverkare");
+
+                    const items = [];
+                    for (let i = headerIndex + 1; i < data.length; i++) {
+                        const row = data[i];
+                        const a = row[artNrIdx] ? row[artNrIdx].trim() : "";
+                        const t = row[titelIdx] ? row[titelIdx].trim() : "";
+                        const m = row[tillverkareIdx] ? row[tillverkareIdx].trim() : "";
+                        if (a !== "") items.push({ a, t, m });
+                    }
+
+                    // Skapa nerladdning
+                    const finalJsonData = JSON.stringify(items);
+                    const blob = new Blob([finalJsonData], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const aLink = document.createElement('a');
+                    aLink.href = url;
+                    aLink.download = "artiklar.json";
+                    document.body.appendChild(aLink);
+                    aLink.click();
+                    document.body.removeChild(aLink);
+                    URL.revokeObjectURL(url);
+
+                    showToast(`Konverterade ${items.length} artiklar! Ladda upp filen på GitHub.`, "success");
+                    e.target.value = ''; // Rensa
+                },
+                error: function(err) { showToast("Kunde inte läsa filen.", "error"); }
+            });
+        };
+
         function attemptArchive(docId, displayId) {
             orderToArchive = docId;
             archiveModalText.innerHTML = `Är du säker på att du vill arkivera <strong>${displayId}</strong>?`;

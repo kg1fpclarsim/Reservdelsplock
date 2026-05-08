@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Reservdelsplock</title>
     
-    <!-- PWA / App-inställningar -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Plock">
@@ -17,16 +16,17 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <!-- PapaParse för CSV till JSON konvertering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
         body { touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
         #reader video { object-fit: cover; border-radius: 0.5rem; }
         #reader { border: none !important; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-100 text-slate-800 font-sans h-[100dvh] flex flex-col overflow-hidden">
 
     <!-- Header -->
     <header class="bg-blue-800 text-white p-4 shadow-md z-10 flex justify-between items-center shrink-0">
@@ -42,7 +42,8 @@
     </header>
 
     <!-- HUVUDVY (Verkstad) -->
-    <main id="main-ui" class="flex-grow p-4 overflow-y-auto flex flex-col gap-4">
+    <!-- Kraftig padding i botten (pb-32) för att alltid gå att scrolla förbi tangentbordet på Android -->
+    <main id="main-ui" class="flex-grow p-4 pb-32 overflow-y-auto flex flex-col gap-4">
         
         <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6">
             <div class="text-center space-y-2 mb-2">
@@ -50,7 +51,10 @@
                 <p class="text-slate-500 font-medium">Ange Regnr, Internnr eller AO.</p>
             </div>
             <div class="w-full max-w-sm flex flex-col gap-3">
-                <input type="text" id="manual-order-input" placeholder="T.ex. OEJ634, DM10 eller 251475" class="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-5 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 uppercase text-lg font-bold text-center tracking-wider transition-all shadow-sm">
+                <div class="relative w-full">
+                    <input type="text" id="manual-order-input" placeholder="T.ex. OEJ634, DM10 eller 251475" class="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-5 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 uppercase text-lg font-bold text-center tracking-wider transition-all shadow-sm">
+                    <div id="order-autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm text-left"></div>
+                </div>
                 <button onclick="setManualOrder()" class="w-full bg-blue-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md flex items-center justify-center gap-2">
                     <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
                     Öppna / Skapa
@@ -58,7 +62,7 @@
             </div>
         </div>
 
-        <div id="step-parts" class="hidden flex-col h-full gap-4">
+        <div id="step-parts" class="hidden flex-col gap-4">
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0">
                 <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktiv Arbetsorder / Fordon</div>
                 <div class="flex justify-between items-center">
@@ -69,35 +73,49 @@
                 </div>
             </div>
 
-            <button onclick="toggleInputSection()" class="flex justify-between items-center bg-indigo-50 p-3 rounded-xl shadow-sm border border-indigo-100 shrink-0 hover:bg-indigo-100 transition-colors w-full">
-                <span class="font-bold text-indigo-900 flex items-center gap-2">
+            <button onclick="toggleInputSection()" class="flex justify-between items-center bg-blue-50 p-3 rounded-xl shadow-sm border border-blue-100 shrink-0 hover:bg-blue-100 transition-colors w-full">
+                <span class="font-bold text-blue-900 flex items-center gap-2">
                     <i data-lucide="plus-circle" class="w-5 h-5"></i> Skanna & Lägg till artiklar
                 </span>
-                <i data-lucide="chevron-up" id="input-toggle-icon" class="w-5 h-5 text-indigo-700 transition-transform"></i>
+                <i data-lucide="chevron-up" id="input-toggle-icon" class="w-5 h-5 text-blue-700 transition-transform"></i>
             </button>
 
-            <div id="add-part-section" class="flex flex-col gap-3 shrink-0">
+            <!-- LÄGG TILL DEL SEKTIONEN -->
+            <div id="add-part-section" class="flex flex-col gap-4 shrink-0 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <!-- Skanner-knappar -->
                 <div class="grid grid-cols-2 gap-3">
                     <button onclick="startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
                         <i data-lucide="qr-code" class="w-8 h-8"></i>
                         <span class="font-bold text-sm text-center leading-tight">Skanna<br>QR/Streckkod</span>
                     </button>
-                    <button onclick="document.getElementById('ocr-input').click()" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
+                    <button onclick="document.getElementById('ocr-input').click()" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
                         <i data-lucide="scan-text" class="w-8 h-8"></i>
                         <span class="font-bold text-sm text-center leading-tight">Läs Text<br>(Fota siffror)</span>
                     </button>
                     <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="processOCR(event)">
                 </div>
-                <div class="flex gap-2 mt-1 items-start">
-                    <div class="relative flex-grow">
-                        <input type="text" id="manual-part-input" placeholder="Sök namn, tillverkare el. artikelnr..." class="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 uppercase text-lg">
-                        <!-- Autocomplete Dropdown -->
-                        <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm">
-                            <!-- Fylls med sökresultat -->
-                        </div>
+                
+                <div class="border-t border-slate-100 my-1"></div>
+
+                <!-- Manuell sökning / Inmatning staplad vertikalt -->
+                <div class="flex flex-col gap-3">
+                    <!-- Sökfält -->
+                    <div class="relative w-full">
+                        <input type="text" id="manual-part-input" placeholder="Sök namn, artikelnr..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-4 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 uppercase text-lg font-bold text-center tracking-wider transition-all">
+                        <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm"></div>
                     </div>
-                    <button onclick="addManualPart()" class="bg-slate-800 text-white rounded-xl px-6 py-3 font-bold hover:bg-slate-700 active:bg-slate-900 transition-colors h-full">
-                        Lägg till
+                    
+                    <!-- Ort-Filter (Snabba knappar) -->
+                    <div class="flex items-center justify-center gap-2 flex-wrap">
+                        <span class="text-xs font-bold text-slate-400 uppercase mr-1">Ort:</span>
+                        <button id="loc-btn-ALLA" onclick="setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm">Alla</button>
+                        <button id="loc-btn-VÄXJÖ" onclick="setLocationFilter('VÄXJÖ')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">Växjö</button>
+                        <button id="loc-btn-NYBRO" onclick="setLocationFilter('NYBRO')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">Nybro</button>
+                    </div>
+
+                    <!-- Lägg till knapp -->
+                    <button onclick="addManualPart()" class="w-full bg-slate-800 text-white rounded-xl py-4 font-bold text-lg hover:bg-slate-700 active:bg-slate-900 transition-colors shadow-md flex items-center justify-center gap-2 mt-1">
+                        <i data-lucide="plus-circle" class="w-5 h-5"></i> Lägg till i listan
                     </button>
                 </div>
             </div>
@@ -126,72 +144,71 @@
     </main>
 
     <!-- ADMINVY (Kontoret) -->
-    <main id="admin-ui" class="hidden flex-grow p-4 overflow-y-auto flex-col gap-4 bg-slate-50">
+    <main id="admin-ui" class="hidden flex-grow p-4 pb-12 overflow-y-auto flex-col gap-4 bg-slate-50">
         <div class="flex justify-between items-center mb-2">
             <h2 class="text-2xl font-bold text-slate-800">Arbetsordrar</h2>
             <div class="text-sm text-slate-500">Uppdateras live</div>
         </div>
         <div class="flex gap-2 border-b border-slate-200 pb-0 mb-4 overflow-x-auto whitespace-nowrap hide-scrollbar">
-            <button id="tab-active" onclick="switchAdminTab('ACTIVE')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors shrink-0">Aktiva</button>
+            <button id="tab-active" onclick="switchAdminTab('ACTIVE')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-blue-600 text-blue-800 transition-colors shrink-0">Aktiva</button>
             <button id="tab-archived" onclick="switchAdminTab('ARCHIVED')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0">Arkiverade</button>
-            <button id="tab-register" onclick="switchAdminTab('REGISTER')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 flex items-center gap-1"><i data-lucide="database" class="w-4 h-4"></i> Artikelregister</button>
+            <button id="tab-register" onclick="switchAdminTab('REGISTER')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 flex items-center gap-1"><i data-lucide="database" class="w-4 h-4"></i> Data-register</button>
         </div>
         
-        <!-- Ordrar Listning -->
-        <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div class="text-slate-500 italic">Laddar ordrar...</div>
-        </div>
+        <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
         <!-- Artikelregister / CSV Konverterare -->
         <div id="admin-register-section" class="hidden flex-col gap-4">
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2">
-                    <i data-lucide="file-json" class="w-6 h-6 text-indigo-600"></i> Uppdatera Sökregistret
+                    <i data-lucide="file-json" class="w-6 h-6 text-blue-600"></i> Uppdatera Sökregister
                 </h3>
-                <p class="text-slate-500 text-sm mb-6">För att sökfunktionen i appen ska hitta de senaste artiklarna behöver vi konvertera din excelfil (.csv) till ett webbformat (.json). Ladda upp .csv-filen här och ladda sedan ner den nya filen.</p>
+                <p class="text-slate-500 text-sm mb-6">Ladda upp dina CSV-filer här för att konvertera dem till webbformat (.json). Verktyget känner automatiskt av om det är artiklar eller fordon.</p>
                 
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 border-dashed mb-4">
-                    <label class="font-bold text-sm mb-2 block text-slate-700">1. Välj din CSV-fil</label>
-                    <input type="file" accept=".csv" onchange="handleCsvUpload(event)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                    <label class="font-bold text-sm mb-2 block text-slate-700">1. Välj fil (Artikel- eller Fordonslista i .csv)</label>
+                    <input type="file" accept=".csv" onchange="handleCsvUpload(event)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
                 </div>
                 
                 <div class="text-sm text-slate-500 italic">
-                    När du laddat ner den nya filen <b>artiklar.json</b>, logga in på din GitHub och lägg den i samma mapp som dina html-filer.
+                    När du laddat ner den nya .json-filen, ladda upp den på GitHub i samma mapp som dina appar. (Observera att artikellistan nu även sparar städer i bakgrunden för ort-söket!)
                 </div>
             </div>
             
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-bold text-slate-800">Status för Sökregister</h3>
-                    <span id="reg-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Kontrollerar...</span>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 class="font-bold text-slate-800">Artiklar</h3>
+                    <span id="reg-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Laddar...</span>
                 </div>
-                <p class="text-sm text-slate-600" id="reg-status-text">Laddar information...</p>
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-slate-800">Fordon</h3>
+                    <span id="veh-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Laddar...</span>
+                </div>
             </div>
         </div>
     </main>
 
-    <!-- Modals (Scanner, OCR Select, Confirm, Unsaved, Archive) -->
+    <!-- Modals (Scanner, Confirm, Unsaved, Archive) -->
     <div id="scanner-ui" class="hidden absolute inset-0 bg-black z-50 flex flex-col">
         <div class="flex justify-between items-center p-4 bg-black/80 text-white">
             <h3 id="scanner-title" class="text-lg font-semibold">Skannar...</h3>
             <button onclick="stopScanning()" class="bg-red-600 hover:bg-red-700 rounded-lg px-4 py-2 font-medium flex items-center gap-2"><i data-lucide="x" class="w-5 h-5"></i> Avbryt</button>
         </div>
         <div class="flex-grow flex items-center justify-center relative overflow-hidden bg-black"><div id="reader" class="w-full max-w-md"></div></div>
-        <div class="p-6 bg-black/80 text-center text-slate-300 text-sm">Rikta kameran mot streckkoden eller QR-koden. Den läses av automatiskt.</div>
+        <div class="p-6 bg-black/80 text-center text-slate-300 text-sm">Rikta kameran mot streckkoden eller QR-koden.</div>
     </div>
 
     <div id="ocr-select-modal" class="hidden absolute inset-0 bg-slate-900/80 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[80vh]">
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50 rounded-t-2xl">
-                <h3 class="font-bold text-indigo-900 text-lg flex items-center gap-2"><i data-lucide="scan-text" class="w-5 h-5"></i> Välj artikelnummer</h3>
-                <button onclick="closeOcrModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-lg transition-colors"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-blue-50 rounded-t-2xl">
+                <h3 class="font-bold text-blue-900 text-lg flex items-center gap-2"><i data-lucide="scan-text" class="w-5 h-5"></i> Välj artikelnummer</h3>
+                <button onclick="closeOcrModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-lg"><i data-lucide="x" class="w-6 h-6"></i></button>
             </div>
             <div class="p-4 overflow-y-auto flex-grow">
-                <p class="text-sm text-slate-500 mb-4 font-medium">Vi hittade dessa nummer i bilden. Klicka på det som är rätt artikelnummer:</p>
                 <div id="ocr-results-container" class="flex flex-col gap-3"></div>
             </div>
             <div class="p-4 border-t border-slate-100">
-                <button onclick="closeOcrModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt (Inget stämmer)</button>
+                <button onclick="closeOcrModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl">Avbryt</button>
             </div>
         </div>
     </div>
@@ -201,8 +218,8 @@
             <div class="flex items-center gap-3 text-red-600 mb-4"><div class="bg-red-100 p-2 rounded-full text-red-600"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3></div>
             <p class="text-slate-600 mb-6" id="confirm-modal-text">Är du säker på att du vill ta bort artikeln?</p>
             <div class="flex gap-3">
-                <button onclick="cancelRemove()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt</button>
-                <button onclick="confirmRemove()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors">Ja, ta bort</button>
+                <button onclick="cancelRemove()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl">Avbryt</button>
+                <button onclick="confirmRemove()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl">Ja, ta bort</button>
             </div>
         </div>
     </div>
@@ -223,17 +240,17 @@
 
     <div id="archive-modal" class="hidden absolute inset-0 bg-slate-900/60 z-[75] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all">
-            <div class="flex items-center gap-3 text-indigo-600 mb-3"><div class="bg-indigo-100 p-2 rounded-full text-indigo-600"><i data-lucide="archive" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Arkivera Order</h3></div>
+            <div class="flex items-center gap-3 text-blue-600 mb-3"><div class="bg-blue-100 p-2 rounded-full text-blue-600"><i data-lucide="archive" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Arkivera Order</h3></div>
             <p class="text-slate-600 mb-6 text-sm font-medium" id="archive-modal-text">Vill du arkivera denna order?</p>
             <div class="flex gap-3">
                 <button onclick="closeArchiveModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl">Avbryt</button>
-                <button onclick="confirmArchive()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl">Ja, arkivera</button>
+                <button onclick="confirmArchive()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl">Ja, arkivera</button>
             </div>
         </div>
     </div>
 
     <div id="ocr-loading" class="hidden absolute inset-0 bg-slate-900/90 z-[60] flex flex-col items-center justify-center text-white backdrop-blur-sm">
-        <i data-lucide="loader-2" class="w-16 h-16 animate-spin text-indigo-400 mb-6"></i>
+        <i data-lucide="loader-2" class="w-16 h-16 animate-spin text-blue-400 mb-6"></i>
         <h3 class="text-2xl font-bold mb-2">Analyserar bild...</h3>
     </div>
 
@@ -270,71 +287,140 @@
             if (currentMode === 'ADMIN' && currentUser && !unsubAdmin) startAdminListener();
         });
 
-        // --- LÄS IN ARTIKELREGISTER (LOKALT FRÅN GITHUB) ---
+        // --- LÄS IN REGISTER (LOKALT FRÅN GITHUB) ---
         let articleDatabase = [];
+        let vehicleDatabase = [];
+
         fetch('artiklar.json')
-            .then(response => {
-                if(!response.ok) throw new Error("Fil saknas");
-                return response.json();
-            })
+            .then(res => { if(!res.ok) throw new Error(); return res.json(); })
             .then(data => {
                 articleDatabase = data;
-                document.getElementById('reg-status-badge').textContent = "Aktivt";
+                document.getElementById('reg-status-badge').textContent = `${data.length} st`;
                 document.getElementById('reg-status-badge').className = "bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200";
-                document.getElementById('reg-status-text').innerHTML = `Hittade <b>${articleDatabase.length}</b> artiklar i sökregistret!`;
-            })
-            .catch(error => {
-                console.log("Inget artikelregister (artiklar.json) hittades. Sökning inaktiverad.");
+            }).catch(e => {
                 document.getElementById('reg-status-badge').textContent = "Saknas";
                 document.getElementById('reg-status-badge').className = "bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200";
-                document.getElementById('reg-status-text').innerHTML = "Kunde inte hitta <i>artiklar.json</i>. Sökfunktionen kommer inte fungera förrän du laddat upp den.";
             });
 
-        // --- AUTOCOMPLETE FUNKTIONER ---
+        fetch('fordon.json')
+            .then(res => { if(!res.ok) throw new Error(); return res.json(); })
+            .then(data => {
+                vehicleDatabase = data;
+                document.getElementById('veh-status-badge').textContent = `${data.length} st`;
+                document.getElementById('veh-status-badge').className = "bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200";
+            }).catch(e => {
+                document.getElementById('veh-status-badge').textContent = "Saknas";
+                document.getElementById('veh-status-badge').className = "bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200";
+            });
+
+        // --- FORDON SÖKNING (AUTOCOMPLETE) ---
+        const orderInput = document.getElementById('manual-order-input');
+        const orderDropdown = document.getElementById('order-autocomplete-dropdown');
+
+        orderInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            orderDropdown.innerHTML = '';
+            if (val.length < 1 || vehicleDatabase.length === 0) { orderDropdown.classList.add('hidden'); return; }
+
+            const matches = vehicleDatabase.filter(v => v.r.toLowerCase().includes(val) || (v.i && v.i.toLowerCase().includes(val))).slice(0, 10);
+
+            if (matches.length > 0) {
+                orderDropdown.classList.remove('hidden');
+                matches.forEach(match => {
+                    const div = document.createElement('div');
+                    div.className = 'p-3 hover:bg-blue-50 cursor-pointer flex flex-col gap-1 transition-colors';
+                    const displayTitle = match.i ? match.i : match.r;
+                    const displaySub = match.i ? `Regnr: ${match.r}` : 'Fordon';
+                    
+                    div.innerHTML = `
+                        <div class="font-bold text-slate-800 leading-tight uppercase">${displayTitle}</div>
+                        <div class="text-xs text-slate-500 leading-tight">${displaySub}</div>
+                    `;
+                    div.onclick = () => {
+                        orderInput.value = match.i ? match.i : match.r; 
+                        orderDropdown.classList.add('hidden');
+                        setManualOrder(); 
+                    };
+                    orderDropdown.appendChild(div);
+                });
+            } else { orderDropdown.classList.add('hidden'); }
+        });
+
+        // --- ARTIKEL SÖKNING & ORT-FILTER ---
+        let currentLocFilter = 'ALLA';
+        const knownLocations = ['växjö', 'nybro', 'jönköping']; // Lägg till fler vid behov
+
+        window.setLocationFilter = function(loc) {
+            currentLocFilter = loc;
+            // Uppdatera knapparnas utseende
+            document.querySelectorAll('.loc-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-white', 'text-slate-600', 'border', 'border-slate-200');
+            });
+            const activeBtn = document.getElementById('loc-btn-' + loc);
+            if(activeBtn) {
+                activeBtn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200');
+                activeBtn.classList.add('bg-blue-600', 'text-white');
+            }
+            // Tvinga en ny sökning om det står text i rutan
+            partInput.dispatchEvent(new Event('input'));
+        };
+
         const partInput = document.getElementById('manual-part-input');
         const dropdown = document.getElementById('autocomplete-dropdown');
 
         partInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
             dropdown.innerHTML = '';
-            
-            if (val.length < 2 || articleDatabase.length === 0) {
-                dropdown.classList.add('hidden');
-                return;
-            }
+            if (val.length < 2 || articleDatabase.length === 0) { dropdown.classList.add('hidden'); return; }
 
-            // Filtrera: Letar i Artikelnummer, Titel och Tillverkare
-            const matches = articleDatabase.filter(item => 
-                item.a.toLowerCase().includes(val) || 
-                item.t.toLowerCase().includes(val) || 
-                (item.m && item.m.toLowerCase().includes(val))
-            ).slice(0, 15); // Visa max 15 träffar för att vara snabbt
+            const matches = articleDatabase.filter(item => {
+                const desc = (item.b || "").toLowerCase();
+                
+                // --- ORT FILTERING LOGIK ---
+                if (currentLocFilter !== 'ALLA') {
+                    const filterLower = currentLocFilter.toLowerCase();
+                    // Är det en "allmän" artikel? (Saknar stadsnamn)
+                    const isGeneric = !knownLocations.some(loc => desc.includes(loc));
+                    // Tillhör den den valda staden?
+                    const matchesLocation = desc.includes(filterLower);
+                    
+                    // Om den är kopplad till EN ANNAN stad än den vi valt, dölj den!
+                    if (!isGeneric && !matchesLocation) return false;
+                }
+
+                // Sök i art.nr, titel, tillverkare OCH beskrivning. (Delar upp orden så "lufttank växjö" funkar)
+                const searchStr = item.a.toLowerCase() + " " + item.t.toLowerCase() + " " + (item.m || "").toLowerCase() + " " + desc;
+                const searchTerms = val.split(' ').filter(t => t.length > 0);
+                return searchTerms.every(term => searchStr.includes(term));
+
+            }).slice(0, 15);
 
             if (matches.length > 0) {
                 dropdown.classList.remove('hidden');
                 matches.forEach(match => {
                     const div = document.createElement('div');
-                    div.className = 'p-3 hover:bg-indigo-50 cursor-pointer flex flex-col gap-1 transition-colors';
+                    div.className = 'p-3 hover:bg-blue-50 cursor-pointer flex flex-col gap-1 transition-colors';
+                    const ortTag = match.b ? `<span class="ml-1 text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">${match.b}</span>` : '';
                     div.innerHTML = `
-                        <div class="font-bold text-slate-800 leading-tight">${match.a}</div>
-                        <div class="text-xs text-slate-500 leading-tight">${match.t} ${match.m ? `<span class="italic text-indigo-400">(${match.m})</span>` : ''}</div>
+                        <div class="font-bold text-slate-800 leading-tight">${match.a} ${ortTag}</div>
+                        <div class="text-xs text-slate-500 leading-tight">${match.t} ${match.m ? `<span class="italic text-blue-400">(${match.m})</span>` : ''}</div>
                     `;
                     div.onclick = () => {
-                        addPartToList(match.a); // Lägg till i listan!
+                        addPartToList(match.a);
                         partInput.value = '';
                         dropdown.classList.add('hidden');
                         partInput.focus();
                     };
                     dropdown.appendChild(div);
                 });
-            } else {
-                dropdown.classList.add('hidden');
-            }
+            } else { dropdown.classList.add('hidden'); }
         });
 
-        // Dölj dropdown om man klickar utanför
+        // Dölj dropdowns om man klickar utanför
         document.addEventListener('click', (e) => {
             if(!partInput.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.add('hidden');
+            if(!orderInput.contains(e.target) && !orderDropdown.contains(e.target)) orderDropdown.classList.add('hidden');
         });
 
         // --- STATE ---
@@ -363,7 +449,6 @@
         const partsListContainer = document.getElementById('parts-list');
         const partCountBadge = document.getElementById('part-count-badge');
         const finishBtn = document.getElementById('finish-btn');
-        const manualOrderInput = document.getElementById('manual-order-input');
         const orderFinishedCb = document.getElementById('order-finished-cb');
         const adminOrdersGrid = document.getElementById('admin-orders-grid');
         const adminRegisterSection = document.getElementById('admin-register-section');
@@ -378,16 +463,6 @@
         const inputToggleIcon = document.getElementById('input-toggle-icon');
 
         lucide.createIcons();
-
-        function showToast(msg, type = 'info') {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
-            else if(type === 'error') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
-            else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
-            toast.classList.remove('translate-y-[150%]');
-            setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
-        }
 
         function toggleInputSection() {
             isInputSectionVisible = !isInputSectionVisible;
@@ -457,7 +532,6 @@
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'flex items-center justify-between p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors';
                 
-                // Letar reda på titeln i registret för att visa det fint!
                 const matchedArticle = articleDatabase.find(a => a.a === part.partNo);
                 const titleStr = matchedArticle ? `<div class="text-xs text-slate-500 truncate max-w-[120px] sm:max-w-[200px]">${matchedArticle.t}</div>` : '';
 
@@ -507,7 +581,7 @@
         }
 
         function setManualOrder() {
-            const val = manualOrderInput.value;
+            const val = orderInput.value;
             if (val.trim() === '') { showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
             let formattedOrder = val.trim().toUpperCase();
             const cleanedForAo = formattedOrder.replace(/[^A-Z0-9]/g, '');
@@ -515,17 +589,7 @@
                 const match = cleanedForAo.match(/^(?:AO)?(\d{2})(\d+)$/);
                 if (match) formattedOrder = `AO-${match[1]}-${match[2]}`;
             }
-            manualOrderInput.value = ''; loadOrder(formattedOrder);
-        }
-
-        function parsePartNumber(rawInput) {
-            let text = rawInput.trim();
-            if (text.startsWith('{') && text.endsWith('}')) {
-                let innerText = text.substring(1, text.length - 1);
-                let segments = innerText.split('|');
-                if (segments.length >= 3) return segments[2].trim(); 
-            }
-            return text;
+            orderInput.value = ''; loadOrder(formattedOrder);
         }
 
         function addPartToList(rawPartNumber) {
@@ -549,7 +613,7 @@
         }
 
         partInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addManualPart(); });
-        manualOrderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') setManualOrder(); });
+        orderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') setManualOrder(); });
 
         function changeQty(index, delta) {
             const newQty = scannedParts[index].qty + delta;
@@ -621,26 +685,22 @@
             const tabArchived = document.getElementById('tab-archived');
             const tabRegister = document.getElementById('tab-register');
             
-            // Återställ alla till inaktiv färg först
             [tabActive, tabArchived, tabRegister].forEach(t => {
                 t.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 flex items-center gap-1";
             });
 
             if (tab === 'REGISTER') {
-                tabRegister.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors shrink-0 flex items-center gap-1";
+                tabRegister.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-blue-600 text-blue-800 transition-colors shrink-0 flex items-center gap-1";
                 adminOrdersGrid.classList.add('hidden');
-                adminRegisterSection.classList.remove('hidden');
-                adminRegisterSection.classList.add('flex');
+                adminRegisterSection.classList.remove('hidden'); adminRegisterSection.classList.add('flex');
             } else {
-                adminOrdersGrid.classList.remove('hidden');
-                adminOrdersGrid.classList.add('grid');
-                adminRegisterSection.classList.add('hidden');
-                adminRegisterSection.classList.remove('flex');
+                adminOrdersGrid.classList.remove('hidden'); adminOrdersGrid.classList.add('grid');
+                adminRegisterSection.classList.add('hidden'); adminRegisterSection.classList.remove('flex');
                 
                 if (tab === 'ACTIVE') {
-                    tabActive.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors shrink-0 flex items-center gap-1";
+                    tabActive.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-blue-600 text-blue-800 transition-colors shrink-0 flex items-center gap-1";
                 } else {
-                    tabArchived.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-indigo-600 text-indigo-800 transition-colors shrink-0 flex items-center gap-1";
+                    tabArchived.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-blue-600 text-blue-800 transition-colors shrink-0 flex items-center gap-1";
                 }
                 renderAdminView();
             }
@@ -693,7 +753,7 @@
                 } else { partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`; }
 
                 const actionBtnHtml = adminTab === 'ACTIVE'
-                    ? `<button onclick="attemptArchive('${order.docId}', '${order.orderId}')" class="text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50 hover:bg-indigo-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
+                    ? `<button onclick="attemptArchive('${order.docId}', '${order.orderId}')" class="text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 hover:bg-blue-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
                     : `<button onclick="restoreOrder('${order.docId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
 
                 const card = document.createElement('div');
@@ -722,7 +782,7 @@
             lucide.createIcons();
         }
 
-        // CSV UPLOAD & KONVERTERING LOGIK
+        // CSV UPLOAD & SMART KONVERTERING LOGIK (NU MED BESKRIVNINGSKOLUMN)
         window.handleCsvUpload = function(e) {
             const file = e.target.files[0];
             if(!file) return;
@@ -733,41 +793,62 @@
                 skipEmptyLines: 'greedy',
                 complete: function(results) {
                     const data = results.data;
-                    const headerIndex = data.findIndex(row => row[0] && row[0].trim() === "Art.nr.");
+                    let headerIndex = -1;
+                    let fileType = null;
                     
-                    if (headerIndex === -1) {
-                        showToast("Kunde inte hitta kolumnen 'Art.nr.'", "error");
-                        return;
+                    for (let i = 0; i < Math.min(10, data.length); i++) {
+                        if (data[i].some(col => col && col.trim() === "Art.nr.")) { headerIndex = i; fileType = 'articles'; break; }
+                        if (data[i].some(col => col && col.trim() === "Reg.nr")) { headerIndex = i; fileType = 'vehicles'; break; }
                     }
+
+                    if (headerIndex === -1) { showToast("Kunde inte känna igen filen.", "error"); return; }
 
                     const headers = data[headerIndex];
-                    const artNrIdx = headers.indexOf("Art.nr.");
-                    const titelIdx = headers.indexOf("Titel");
-                    const tillverkareIdx = headers.indexOf("Tillverkare");
-
                     const items = [];
-                    for (let i = headerIndex + 1; i < data.length; i++) {
-                        const row = data[i];
-                        const a = row[artNrIdx] ? row[artNrIdx].trim() : "";
-                        const t = row[titelIdx] ? row[titelIdx].trim() : "";
-                        const m = row[tillverkareIdx] ? row[tillverkareIdx].trim() : "";
-                        if (a !== "") items.push({ a, t, m });
+                    let fileNameToSave = "";
+
+                    if (fileType === 'articles') {
+                        const artNrIdx = headers.indexOf("Art.nr.");
+                        const titelIdx = headers.indexOf("Titel");
+                        const tillverkareIdx = headers.indexOf("Tillverkare");
+                        const beskrivningIdx = headers.indexOf("Beskrivning"); // LÄSTE IN BESKRIVNING
+
+                        for (let i = headerIndex + 1; i < data.length; i++) {
+                            const row = data[i];
+                            const a = row[artNrIdx] ? row[artNrIdx].trim() : "";
+                            const t = row[titelIdx] ? row[titelIdx].trim() : "";
+                            const m = row[tillverkareIdx] ? row[tillverkareIdx].trim() : "";
+                            const b = (beskrivningIdx !== -1 && row[beskrivningIdx]) ? row[beskrivningIdx].trim() : ""; // SPARA BESKRIVNING
+
+                            if (a !== "") items.push({ a, t, m, b });
+                        }
+                        fileNameToSave = "artiklar.json";
+                    } 
+                    else if (fileType === 'vehicles') {
+                        const regNrIdx = headers.indexOf("Reg.nr");
+                        const intNrIdx = headers.indexOf("Intern referens");
+                        for (let i = headerIndex + 1; i < data.length; i++) {
+                            const row = data[i];
+                            const r = row[regNrIdx] ? row[regNrIdx].trim() : "";
+                            const intRef = row[intNrIdx] ? row[intNrIdx].trim() : "";
+                            if (r !== "") items.push({ r: r, i: intRef });
+                        }
+                        fileNameToSave = "fordon.json";
                     }
 
-                    // Skapa nerladdning
                     const finalJsonData = JSON.stringify(items);
                     const blob = new Blob([finalJsonData], { type: "application/json" });
                     const url = URL.createObjectURL(blob);
                     const aLink = document.createElement('a');
                     aLink.href = url;
-                    aLink.download = "artiklar.json";
+                    aLink.download = fileNameToSave;
                     document.body.appendChild(aLink);
                     aLink.click();
                     document.body.removeChild(aLink);
                     URL.revokeObjectURL(url);
 
-                    showToast(`Konverterade ${items.length} artiklar! Ladda upp filen på GitHub.`, "success");
-                    e.target.value = ''; // Rensa
+                    showToast(`Konverterade ${items.length} ${fileType === 'vehicles' ? 'fordon' : 'artiklar'}!`, "success");
+                    e.target.value = '';
                 },
                 error: function(err) { showToast("Kunde inte läsa filen.", "error"); }
             });
@@ -833,8 +914,8 @@
             const container = document.getElementById('ocr-results-container'); container.innerHTML = ''; 
             matches.forEach(match => {
                 const btn = document.createElement('button');
-                btn.className = "w-full text-left bg-white border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 p-4 rounded-xl text-xl font-bold text-slate-800 flex justify-between items-center";
-                btn.innerHTML = `<span>${match}</span> <i data-lucide="chevron-right" class="w-5 h-5 text-indigo-400"></i>`;
+                btn.className = "w-full text-left bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 p-4 rounded-xl text-xl font-bold text-slate-800 flex justify-between items-center";
+                btn.innerHTML = `<span>${match}</span> <i data-lucide="chevron-right" class="w-5 h-5 text-blue-400"></i>`;
                 btn.onclick = () => { addPartToList(match); closeOcrModal(); }; container.appendChild(btn);
             });
             lucide.createIcons(); document.getElementById('ocr-select-modal').classList.remove('hidden'); document.getElementById('ocr-select-modal').classList.add('flex');

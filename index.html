@@ -264,6 +264,17 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // Global showToast för att undvika ReferenceError från inbäddade event/callbacks
+        window.showToast = function(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            else if(type === 'error') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            toast.classList.remove('translate-y-[150%]');
+            setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
+        };
+
         const firebaseConfig = {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
             authDomain: "smalands-logistik-verkstad.firebaseapp.com",
@@ -322,7 +333,9 @@
             orderDropdown.innerHTML = '';
             if (val.length < 1 || vehicleDatabase.length === 0) { orderDropdown.classList.add('hidden'); return; }
 
-            const matches = vehicleDatabase.filter(v => v.r.toLowerCase().includes(val) || (v.i && v.i.toLowerCase().includes(val))).slice(0, 10);
+            const matches = vehicleDatabase.filter(v => 
+                v.r.toLowerCase().includes(val) || (v.i && v.i.toLowerCase().includes(val))
+            ).slice(0, 10);
 
             if (matches.length > 0) {
                 orderDropdown.classList.remove('hidden');
@@ -559,10 +572,10 @@
         function markUnsaved() { hasUnsavedChanges = true; }
 
         async function loadOrder(orderNo) {
-            if (!currentUser) { showToast("Väntar på systemanslutning...", "error"); return; }
+            if (!currentUser) { window.showToast("Väntar på systemanslutning...", "error"); return; }
             currentOrderNo = orderNo; scannedParts = []; orderFinishedCb.checked = false;
             if (!isInputSectionVisible) toggleInputSection();
-            showToast(`Hämtar data för ${orderNo}...`);
+            window.showToast(`Hämtar data för ${orderNo}...`);
             try {
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderNo);
                 const docSnap = await getDoc(docRef);
@@ -571,18 +584,18 @@
                     scannedParts = data.parts || [];
                     orderFinishedCb.checked = data.isFinished || false;
                     if(data.isFinished) {
-                        showToast(`Informationen var markerad som färdig`, 'info');
+                        window.showToast(`Informationen var markerad som färdig`, 'info');
                         if (isInputSectionVisible) toggleInputSection();
-                    } else { showToast(`Hämtade befintliga data`, 'success'); }
-                } else { showToast(`Nytt fordon/order skapat`, 'success'); }
+                    } else { window.showToast(`Hämtade befintliga data`, 'success'); }
+                } else { window.showToast(`Nytt fordon/order skapat`, 'success'); }
                 hasUnsavedChanges = false;
-            } catch (error) { showToast("Kunde inte kontrollera historik", "error"); }
+            } catch (error) { window.showToast("Kunde inte kontrollera historik", "error"); }
             updateUI();
         }
 
         function setManualOrder() {
             const val = orderInput.value;
-            if (val.trim() === '') { showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
+            if (val.trim() === '') { window.showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
             let formattedOrder = val.trim().toUpperCase();
             const cleanedForAo = formattedOrder.replace(/[^A-Z0-9]/g, '');
             if (cleanedForAo.length >= 5 && /^(?:AO)?\d+$/.test(cleanedForAo)) {
@@ -592,16 +605,26 @@
             orderInput.value = ''; loadOrder(formattedOrder);
         }
 
+        function parsePartNumber(rawInput) {
+            let text = rawInput.trim();
+            if (text.startsWith('{') && text.endsWith('}')) {
+                let innerText = text.substring(1, text.length - 1);
+                let segments = innerText.split('|');
+                if (segments.length >= 3) return segments[2].trim(); 
+            }
+            return text;
+        }
+
         function addPartToList(rawPartNumber) {
             if (!rawPartNumber) return;
             const cleanedPartNo = parsePartNumber(rawPartNumber).toUpperCase();
             const existingPartIndex = scannedParts.findIndex(p => p.partNo === cleanedPartNo);
             if (existingPartIndex >= 0) {
                 scannedParts[existingPartIndex].qty += 1;
-                showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
+                window.showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
             } else {
                 scannedParts.unshift({ partNo: cleanedPartNo, qty: 1 });
-                showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
+                window.showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
             }
             markUnsaved(); if(navigator.vibrate) navigator.vibrate(50); updateUI();
         }
@@ -650,7 +673,7 @@
 
         async function finishOrder() {
             if (scannedParts.length === 0 && !orderFinishedCb.checked) return;
-            if (!currentUser) { showToast('Ansluter till molnet...', 'error'); return; }
+            if (!currentUser) { window.showToast('Ansluter till molnet...', 'error'); return; }
 
             try {
                 const originalText = finishBtn.innerHTML;
@@ -669,12 +692,12 @@
                 }, { merge: true });
 
                 hasUnsavedChanges = false;
-                showToast('Arbetsorder sparad i systemet!', 'success');
+                window.showToast('Arbetsorder sparad i systemet!', 'success');
                 setTimeout(() => {
                     clearOrder(); finishBtn.innerHTML = originalText; finishBtn.disabled = false; lucide.createIcons();
                 }, 1000);
             } catch (error) {
-                showToast('Ett fel uppstod vid sparandet.', 'error');
+                window.showToast('Ett fel uppstod vid sparandet.', 'error');
                 finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Spara Arbetsorder'; finishBtn.disabled = false; lucide.createIcons();
             }
         }
@@ -787,7 +810,7 @@
             const file = e.target.files[0];
             if(!file) return;
             
-            showToast("Läser in excelfil...", "info");
+            window.showToast("Läser in excelfil...", "info");
             
             Papa.parse(file, {
                 skipEmptyLines: 'greedy',
@@ -801,7 +824,7 @@
                         if (data[i].some(col => col && col.trim() === "Reg.nr")) { headerIndex = i; fileType = 'vehicles'; break; }
                     }
 
-                    if (headerIndex === -1) { showToast("Kunde inte känna igen filen.", "error"); return; }
+                    if (headerIndex === -1) { window.showToast("Kunde inte känna igen filen.", "error"); return; }
 
                     const headers = data[headerIndex];
                     const items = [];
@@ -811,14 +834,14 @@
                         const artNrIdx = headers.indexOf("Art.nr.");
                         const titelIdx = headers.indexOf("Titel");
                         const tillverkareIdx = headers.indexOf("Tillverkare");
-                        const beskrivningIdx = headers.indexOf("Beskrivning"); // LÄSTE IN BESKRIVNING
+                        const beskrivningIdx = headers.indexOf("Beskrivning"); 
 
                         for (let i = headerIndex + 1; i < data.length; i++) {
                             const row = data[i];
                             const a = row[artNrIdx] ? row[artNrIdx].trim() : "";
                             const t = row[titelIdx] ? row[titelIdx].trim() : "";
                             const m = row[tillverkareIdx] ? row[tillverkareIdx].trim() : "";
-                            const b = (beskrivningIdx !== -1 && row[beskrivningIdx]) ? row[beskrivningIdx].trim() : ""; // SPARA BESKRIVNING
+                            const b = (beskrivningIdx !== -1 && row[beskrivningIdx]) ? row[beskrivningIdx].trim() : ""; 
 
                             if (a !== "") items.push({ a, t, m, b });
                         }
@@ -847,10 +870,10 @@
                     document.body.removeChild(aLink);
                     URL.revokeObjectURL(url);
 
-                    showToast(`Konverterade ${items.length} ${fileType === 'vehicles' ? 'fordon' : 'artiklar'}!`, "success");
+                    window.showToast(`Konverterade ${items.length} ${fileType === 'vehicles' ? 'fordon' : 'artiklar'}!`, "success");
                     e.target.value = '';
                 },
-                error: function(err) { showToast("Kunde inte läsa filen.", "error"); }
+                error: function(err) { window.showToast("Kunde inte läsa filen.", "error"); }
             });
         };
 
@@ -862,20 +885,20 @@
 
         async function confirmArchive() {
             if (!orderToArchive || !currentUser) return;
-            const idToArchive = orderToArchive; closeArchiveModal(); showToast('Arkiverar...', 'info');
+            const idToArchive = orderToArchive; closeArchiveModal(); window.showToast('Arkiverar...', 'info');
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', idToArchive), { isArchived: true }, { merge: true });
-                showToast('Ordern har arkiverats!', 'success');
-            } catch (error) { showToast('Kunde inte arkivera ordern.', 'error'); }
+                window.showToast('Ordern har arkiverats!', 'success');
+            } catch (error) { window.showToast('Kunde inte arkivera ordern.', 'error'); }
         }
 
         async function restoreOrder(docId) {
             if (!currentUser) return;
-            showToast('Återställer order...', 'info');
+            window.showToast('Återställer order...', 'info');
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', docId), { isArchived: false }, { merge: true });
-                showToast('Ordern har flyttats till Aktiva!', 'success');
-            } catch (error) { showToast('Kunde inte återställa ordern.', 'error'); }
+                window.showToast('Ordern har flyttats till Aktiva!', 'success');
+            } catch (error) { window.showToast('Kunde inte återställa ordern.', 'error'); }
         }
 
         function closeArchiveModal() { archiveModal.classList.add('hidden'); archiveModal.classList.remove('flex'); orderToArchive = null; }
@@ -886,7 +909,7 @@
             uiMain.classList.add('hidden'); uiScanner.classList.remove('hidden'); uiScanner.classList.add('flex');
             initScannerIfNeeded();
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess, () => {})
-                .then(() => { isScanning = true; }).catch(err => { stopScanning(); showToast('Kunde inte starta kameran.', 'error'); });
+                .then(() => { isScanning = true; }).catch(err => { stopScanning(); window.showToast('Kunde inte starta kameran.', 'error'); });
         }
 
         function stopScanning() {
@@ -929,10 +952,10 @@
                 const worker = await Tesseract.createWorker('eng'); const ret = await worker.recognize(file); await worker.terminate();
                 const text = ret.data.text; const rawMatches = text.match(/\b\d{2,25}\b/g) || [];
                 let uniqueMatches = [...new Set(rawMatches)]; uniqueMatches.sort((a, b) => b.length - a.length);
-                if (uniqueMatches.length === 0) showToast("Hittade inga tydliga siffror i bilden.", "error");
+                if (uniqueMatches.length === 0) window.showToast("Hittade inga tydliga siffror i bilden.", "error");
                 else if (uniqueMatches.length === 1) addPartToList(uniqueMatches[0]);
                 else showOcrSelection(uniqueMatches);
-            } catch(err) { showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
+            } catch(err) { window.showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
             } finally { document.getElementById('ocr-loading').classList.add('hidden'); document.getElementById('ocr-loading').classList.remove('flex'); event.target.value = ''; }
         }
 

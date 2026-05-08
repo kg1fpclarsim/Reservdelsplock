@@ -144,27 +144,27 @@
     </main>
 
     <!-- ADMINVY (Kontoret) -->
-    <main id="admin-ui" class="hidden flex-grow p-4 pb-12 overflow-y-auto flex-col gap-4 bg-slate-50">
-        <div class="flex justify-between items-center mb-2">
-            <h2 class="text-2xl font-bold text-slate-800">Arbetsordrar</h2>
-            <div class="text-sm text-slate-500">Uppdateras live</div>
-        </div>
-        <div class="flex gap-2 border-b border-slate-200 pb-0 mb-4 overflow-x-auto whitespace-nowrap hide-scrollbar">
-            <button id="tab-active" onclick="switchAdminTab('ACTIVE')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-blue-600 text-blue-800 transition-colors shrink-0">Aktiva</button>
-            <button id="tab-archived" onclick="switchAdminTab('ARCHIVED')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0">Arkiverade</button>
-            <button id="tab-register" onclick="switchAdminTab('REGISTER')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 flex items-center gap-1"><i data-lucide="database" class="w-4 h-4"></i> Data-register</button>
+    <main id="admin-ui" class="hidden flex-grow overflow-y-auto flex-col bg-slate-50 relative">
+        <!-- STICKY TOP MENU FÖR ADMIN -->
+        <div class="sticky top-0 bg-slate-50 z-20 px-4 pt-4 border-b border-slate-200 shadow-sm">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="text-2xl font-bold text-slate-800">Arbetsordrar</h2>
+                <div class="text-sm text-slate-500">Uppdateras live</div>
+            </div>
+            <div class="flex gap-2 pb-0 overflow-x-auto whitespace-nowrap hide-scrollbar">
+                <button id="tab-active" onclick="switchAdminTab('ACTIVE')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-blue-600 text-blue-800 transition-colors shrink-0">Aktiva</button>
+                <button id="tab-archived" onclick="switchAdminTab('ARCHIVED')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0">Arkiverade</button>
+                <button id="tab-register" onclick="switchAdminTab('REGISTER')" class="px-4 py-2 font-bold rounded-t-lg border-b-4 border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0 flex items-center gap-1"><i data-lucide="database" class="w-4 h-4"></i> Data-register</button>
+            </div>
         </div>
         
-        <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        <!-- INNEHÅLL (Grid & Register) -->
+        <div class="p-4 pb-12 flex flex-col gap-4">
+            <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
-        <!-- Artikelregister / CSV Konverterare -->
-        <div id="admin-register-section" class="hidden flex-col gap-4">
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2">
-                    <i data-lucide="file-json" class="w-6 h-6 text-blue-600"></i> Uppdatera Sökregister
-                </h3>
-                <p class="text-slate-500 text-sm mb-6">Ladda upp dina CSV-filer här för att konvertera dem till webbformat (.json). Verktyget känner automatiskt av om det är artiklar eller fordon.</p>
-                
+            <!-- Artikelregister / CSV Konverterare -->
+            <div id="admin-register-section" class="hidden flex-col gap-4">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 border-dashed mb-4">
                     <label class="font-bold text-sm mb-2 block text-slate-700">1. Välj fil (Artikel- eller Fordonslista i .csv)</label>
                     <input type="file" accept=".csv" onchange="handleCsvUpload(event)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
@@ -186,6 +186,7 @@
                 </div>
             </div>
         </div>
+        </div> <!-- Ny stängning för wrap-diven -->
     </main>
 
     <!-- Modals (Scanner, Confirm, Unsaved, Archive) -->
@@ -274,6 +275,9 @@
             toast.classList.remove('translate-y-[150%]');
             setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
         };
+        
+        // Fäst funktionen lokalt så att externa bibliotek alltid hittar den
+        const showToast = window.showToast;
 
         const firebaseConfig = {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",

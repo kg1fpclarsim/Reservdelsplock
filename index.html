@@ -853,10 +853,22 @@
                     const data = results.data;
                     let headerIndex = -1;
                     let fileType = null;
+                    let warehouseRowIndex = -1;
                     
+                    // Leta reda på rubrikraden (Rad 3 i ditt fall, index 2)
                     for (let i = 0; i < Math.min(10, data.length); i++) {
-                        if (data[i].some(col => col && col.trim() === "Art.nr.")) { headerIndex = i; fileType = 'articles'; break; }
-                        if (data[i].some(col => col && col.trim() === "Reg.nr")) { headerIndex = i; fileType = 'vehicles'; break; }
+                        if (data[i].some(col => col && col.trim() === "Art.nr.")) { 
+                            headerIndex = i; 
+                            fileType = 'articles'; 
+                            // Lagernamnen förväntas finnas på raden precis ovanför (Rad 2, index 1)
+                            warehouseRowIndex = i - 1;
+                            break; 
+                        }
+                        if (data[i].some(col => col && col.trim() === "Reg.nr")) { 
+                            headerIndex = i; 
+                            fileType = 'vehicles'; 
+                            break; 
+                        }
                     }
 
                     if (headerIndex === -1) { showToast("Kunde inte känna igen filen.", "error"); return; }
@@ -869,14 +881,40 @@
                         const artNrIdx = headers.indexOf("Art.nr.");
                         const titelIdx = headers.indexOf("Titel");
                         const tillverkareIdx = headers.indexOf("Tillverkare");
-                        const beskrivningIdx = headers.indexOf("Beskrivning"); 
+                        
+                        // Hitta alla "Lagersaldo"-kolumner och deras motsvarande lager från raden ovanför
+                        const warehouseColumns = [];
+                        const warehouseNames = data[warehouseRowIndex];
+                        
+                        if (warehouseRowIndex >= 0 && warehouseNames) {
+                            headers.forEach((header, index) => {
+                                if (header && header.trim() === "Lagersaldo") {
+                                    const warehouseName = warehouseNames[index] ? warehouseNames[index].trim() : "Okänt Lager";
+                                    // Ta bort "Smålandslogistik " etc. för att korta ner knappnamnen om man vill
+                                    let cleanName = warehouseName.replace("Smålandslogistik ", "");
+                                    warehouseColumns.push({ index: index, name: cleanName });
+                                }
+                            });
+                        }
 
                         for (let i = headerIndex + 1; i < data.length; i++) {
                             const row = data[i];
                             const a = row[artNrIdx] ? row[artNrIdx].trim() : "";
                             const t = row[titelIdx] ? row[titelIdx].trim() : "";
                             const m = row[tillverkareIdx] ? row[tillverkareIdx].trim() : "";
-                            const b = (beskrivningIdx !== -1 && row[beskrivningIdx]) ? row[beskrivningIdx].trim() : ""; 
+                            
+                            // Bygg en sträng med alla lager där artikeln har ett lagersaldo
+                            let locationsArray = [];
+                            warehouseColumns.forEach(col => {
+                                const saldo = row[col.index];
+                                // Om saldot innehåller en siffra (oavsett 0, pos eller neg), så finns artikeln på detta lager
+                                if (saldo && /[0-9]/.test(saldo)) {
+                                    locationsArray.push(col.name);
+                                }
+                            });
+                            
+                            // Skapa en komma-separerad sträng med orterna (t.ex. "Växjö, Nybro")
+                            const b = locationsArray.join(", ");
 
                             if (a !== "") items.push({ a, t, m, b });
                         }

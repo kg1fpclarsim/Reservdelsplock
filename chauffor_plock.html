@@ -17,6 +17,8 @@
 
     <style>
         body { touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-[100dvh] flex flex-col overflow-hidden">
@@ -71,12 +73,11 @@
                         <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm text-left"></div>
                     </div>
                     
-                    <!-- Ort-Filter -->
-                    <div class="flex items-center justify-center gap-2 flex-wrap">
-                        <span class="text-xs font-bold text-slate-400 uppercase mr-1">Ort:</span>
-                        <button id="loc-btn-ALLA" onclick="setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-indigo-600 text-white transition-colors shadow-sm">Alla</button>
-                        <button id="loc-btn-VÄXJÖ" onclick="setLocationFilter('VÄXJÖ')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">Växjö</button>
-                        <button id="loc-btn-NYBRO" onclick="setLocationFilter('NYBRO')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">Nybro</button>
+                    <!-- Lager-Filter (Snabba knappar genereras nu dynamiskt) -->
+                    <div id="location-filter-container" class="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full pb-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Lager:</span>
+                        <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-indigo-600 text-white transition-colors shadow-sm shrink-0">Alla</button>
+                        <span class="text-xs text-slate-400 italic">Laddar lager...</span>
                     </div>
 
                     <!-- Fullbredds-knapp -->
@@ -100,10 +101,10 @@
                     <span class="font-bold text-slate-800 text-lg">Plockningen är färdig</span>
                     <span class="text-xs text-slate-500">Kryssa i om du plockat klart allt</span>
                 </div>
-                <input type="checkbox" id="order-finished-cb" onchange="markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
+                <input type="checkbox" id="order-finished-cb" onchange="window.markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
             </label>
 
-            <button onclick="finishOrder()" id="finish-btn" class="w-full bg-indigo-600 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity shrink-0 flex items-center justify-center gap-2 hover:bg-indigo-700 active:bg-indigo-800">
+            <button onclick="window.finishOrder()" id="finish-btn" class="w-full bg-indigo-600 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity shrink-0 flex items-center justify-center gap-2 hover:bg-indigo-700 active:bg-indigo-800">
                 <i data-lucide="save" class="w-6 h-6"></i>
                 Skicka in reservdelar
             </button>
@@ -116,8 +117,8 @@
             <div class="flex items-center gap-3 text-red-600 mb-4"><div class="bg-red-100 p-2 rounded-full text-red-600"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3></div>
             <p class="text-slate-600 mb-6" id="confirm-modal-text">Är du säker på att du vill ta bort artikeln?</p>
             <div class="flex gap-3">
-                <button onclick="cancelRemove()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt</button>
-                <button onclick="confirmRemove()" class="flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 rounded-xl transition-colors shadow-sm">Ja, ta bort</button>
+                <button onclick="window.cancelRemove()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt</button>
+                <button onclick="window.confirmRemove()" class="flex-1 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 rounded-xl transition-colors shadow-sm">Ja, ta bort</button>
             </div>
         </div>
     </div>
@@ -127,10 +128,10 @@
             <div class="flex items-center gap-3 text-orange-600 mb-3"><div class="bg-orange-100 p-2 rounded-full text-orange-600"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Osparade ändringar</h3></div>
             <p class="text-slate-600 mb-6 text-sm font-medium">Du har gjort ändringar som inte skickats in.</p>
             <div class="flex flex-col gap-3">
-                <button onclick="closeUnsavedModal(); finishOrder();" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-4 rounded-xl transition-colors shadow-sm text-lg flex items-center justify-center gap-2"><i data-lucide="save" class="w-5 h-5"></i> Skicka in delar</button>
+                <button onclick="window.closeUnsavedModal(); window.finishOrder();" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-4 rounded-xl transition-colors shadow-sm text-lg flex items-center justify-center gap-2"><i data-lucide="save" class="w-5 h-5"></i> Skicka in delar</button>
                 <div class="flex gap-3 mt-1">
-                    <button onclick="closeUnsavedModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt</button>
-                    <button onclick="forceClearOrder()" class="flex-1 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 font-bold py-3 rounded-xl transition-colors">Stäng ändå</button>
+                    <button onclick="window.closeUnsavedModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt</button>
+                    <button onclick="window.forceClearOrder()" class="flex-1 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 font-bold py-3 rounded-xl transition-colors">Stäng ändå</button>
                 </div>
             </div>
         </div>
@@ -144,6 +145,16 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.showToast = function(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            else if(type === 'error') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
+            toast.classList.remove('translate-y-[150%]');
+            setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
+        };
 
         const firebaseConfig = {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
@@ -171,7 +182,10 @@
 
         fetch('artiklar.json')
             .then(res => { if(!res.ok) throw new Error(); return res.json(); })
-            .then(data => { articleDatabase = data; })
+            .then(data => { 
+                articleDatabase = data; 
+                window.generateLocationButtons(data); 
+            })
             .catch(e => console.log("Hittade inget artikelregister."));
 
         fetch('fordon.json')
@@ -207,16 +221,45 @@
                     div.onclick = () => {
                         orderInput.value = match.i ? match.i : match.r; 
                         orderDropdown.classList.add('hidden');
-                        setManualOrder(); 
+                        window.setManualOrder(); 
                     };
                     orderDropdown.appendChild(div);
                 });
             } else { orderDropdown.classList.add('hidden'); }
         });
 
-        // --- ARTIKEL SÖKNING & ORT-FILTER ---
+        // --- DYNAMISKA LAGER-KNAPPAR & SÖKNING ---
+        window.knownLocations = [];
+        window.generateLocationButtons = function(data) {
+            const container = document.getElementById('location-filter-container');
+            if(!container) return;
+
+            let locations = new Set();
+            data.forEach(item => {
+                if(item.b && item.b.trim() !== '') {
+                    if(item.b.length <= 25) {
+                        locations.add(item.b.trim().toUpperCase());
+                    }
+                }
+            });
+
+            const uniqueLocs = Array.from(locations).sort();
+            window.knownLocations = uniqueLocs.map(l => l.toLowerCase());
+
+            container.innerHTML = `<span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Lager:</span>
+                <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-indigo-600 text-white transition-colors shadow-sm shrink-0">Alla</button>`;
+
+            uniqueLocs.forEach(loc => {
+                const btn = document.createElement('button');
+                btn.id = `loc-btn-${loc}`;
+                btn.onclick = () => window.setLocationFilter(loc);
+                btn.className = "loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm shrink-0";
+                btn.textContent = loc.charAt(0) + loc.slice(1).toLowerCase();
+                container.appendChild(btn);
+            });
+        };
+
         let currentLocFilter = 'ALLA';
-        const knownLocations = ['växjö', 'nybro', 'jönköping']; // Kända städer att filtrera på
 
         window.setLocationFilter = function(loc) {
             currentLocFilter = loc;
@@ -246,15 +289,13 @@
             const matches = articleDatabase.filter(item => {
                 const desc = (item.b || "").toLowerCase();
                 
-                // ORT FILTERING LOGIK
                 if (currentLocFilter !== 'ALLA') {
                     const filterLower = currentLocFilter.toLowerCase();
-                    const isGeneric = !knownLocations.some(loc => desc.includes(loc));
-                    const matchesLocation = desc.includes(filterLower);
+                    const isGeneric = !window.knownLocations.some(loc => desc === loc || desc.includes(loc));
+                    const matchesLocation = desc === filterLower || desc.includes(filterLower);
                     if (!isGeneric && !matchesLocation) return false;
                 }
 
-                // Fritext-sökning på flera ord (t.ex. "lufttank växjö")
                 const searchStr = item.a.toLowerCase() + " " + item.t.toLowerCase() + " " + (item.m || "").toLowerCase() + " " + desc;
                 const searchTerms = val.split(' ').filter(t => t.length > 0);
                 return searchTerms.every(term => searchStr.includes(term));
@@ -272,7 +313,7 @@
                         <div class="text-xs text-slate-500 leading-tight">${match.t} ${match.m ? `<span class="italic text-indigo-400">(${match.m})</span>` : ''}</div>
                     `;
                     div.onclick = () => {
-                        addPartToList(match.a);
+                        window.addPartToList(match.a);
                         partInput.value = '';
                         dropdown.classList.add('hidden');
                         partInput.focus();
@@ -282,7 +323,6 @@
             } else { dropdown.classList.add('hidden'); }
         });
 
-        // Dölj dropdowns om man klickar utanför
         document.addEventListener('click', (e) => {
             if(!partInput.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.add('hidden');
             if(!orderInput.contains(e.target) && !orderDropdown.contains(e.target)) orderDropdown.classList.add('hidden');
@@ -308,16 +348,6 @@
         const unsavedModal = document.getElementById('unsaved-modal'); 
 
         lucide.createIcons();
-
-        function showToast(msg, type = 'info') {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').textContent = msg;
-            if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
-            else if(type === 'error') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
-            else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
-            toast.classList.remove('translate-y-[150%]');
-            setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
-        }
 
         function updateUI() {
             if (!currentOrderNo) {
@@ -367,30 +397,30 @@
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
                         <div class="flex items-center bg-slate-100 rounded-lg border border-slate-200">
-                            <button onclick="changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                            <button onclick="window.changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
                             <span class="w-8 text-center font-bold text-slate-800 select-none">${part.qty}</span>
-                            <button onclick="changeQty(${index}, 1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-r-lg transition-colors"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                            <button onclick="window.changeQty(${index}, 1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-r-lg transition-colors"><i data-lucide="plus" class="w-4 h-4"></i></button>
                         </div>
-                        <button onclick="removePart(${index})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                        <button onclick="window.removePart(${index})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                     </div>`;
                 partsListContainer.appendChild(itemDiv);
             });
             lucide.createIcons();
         }
 
-        function markUnsaved() { hasUnsavedChanges = true; }
+        window.markUnsaved = function() { hasUnsavedChanges = true; };
 
         function loadOrder(orderNo) {
-            if (!currentUser) { showToast("Väntar på systemanslutning...", "error"); return; }
+            if (!currentUser) { window.showToast("Väntar på systemanslutning...", "error"); return; }
             currentOrderNo = orderNo; scannedParts = []; orderFinishedCb.checked = false;
-            showToast(`Ny plockning startad för ${orderNo}`, 'success');
+            window.showToast(`Ny plockning startad för ${orderNo}`, 'success');
             hasUnsavedChanges = false;
             updateUI();
         }
 
-        function setManualOrder() {
+        window.setManualOrder = function() {
             const val = orderInput.value;
-            if (val.trim() === '') { showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
+            if (val.trim() === '') { window.showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
             let formattedOrder = val.trim().toUpperCase();
             const cleanedForAo = formattedOrder.replace(/[^A-Z0-9]/g, '');
             if (cleanedForAo.length >= 5 && /^(?:AO)?\d+$/.test(cleanedForAo)) {
@@ -398,67 +428,77 @@
                 if (match) formattedOrder = `AO-${match[1]}-${match[2]}`;
             }
             orderInput.value = ''; loadOrder(formattedOrder);
+        };
+
+        function parsePartNumber(rawInput) {
+            let text = rawInput.trim();
+            if (text.startsWith('{') && text.endsWith('}')) {
+                let innerText = text.substring(1, text.length - 1);
+                let segments = innerText.split('|');
+                if (segments.length >= 3) return segments[2].trim(); 
+            }
+            return text;
         }
 
-        function addPartToList(rawPartNumber) {
+        window.addPartToList = function(rawPartNumber) {
             if (!rawPartNumber) return;
-            const cleanedPartNo = rawPartNumber.trim().toUpperCase();
+            const cleanedPartNo = parsePartNumber(rawPartNumber).toUpperCase();
             const existingPartIndex = scannedParts.findIndex(p => p.partNo === cleanedPartNo);
             if (existingPartIndex >= 0) {
                 scannedParts[existingPartIndex].qty += 1;
-                showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
+                window.showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
             } else {
                 scannedParts.unshift({ partNo: cleanedPartNo, qty: 1 });
-                showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
+                window.showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
             }
-            markUnsaved(); if(navigator.vibrate) navigator.vibrate(50); updateUI();
-        }
+            window.markUnsaved(); if(navigator.vibrate) navigator.vibrate(50); updateUI();
+        };
 
-        function addManualPart() {
+        window.addManualPart = function() {
             const val = partInput.value;
             if (val.trim() === '') return;
-            addPartToList(val); partInput.value = ''; dropdown.classList.add('hidden'); partInput.focus();
-        }
+            window.addPartToList(val); partInput.value = ''; dropdown.classList.add('hidden'); partInput.focus();
+        };
 
-        partInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addManualPart(); });
-        orderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') setManualOrder(); });
+        partInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.addManualPart(); });
+        orderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.setManualOrder(); });
 
-        function changeQty(index, delta) {
+        window.changeQty = function(index, delta) {
             const newQty = scannedParts[index].qty + delta;
-            if (newQty > 0) { scannedParts[index].qty = newQty; markUnsaved(); updateUI(); } 
-            else { removePart(index); }
-        }
+            if (newQty > 0) { scannedParts[index].qty = newQty; window.markUnsaved(); updateUI(); } 
+            else { window.removePart(index); }
+        };
 
-        function removePart(index) {
+        window.removePart = function(index) {
             itemToDelete = index;
-            confirmModalText.innerHTML = `Är du säker på att du vill ta bort <strong>${scannedParts[index].partNo}</strong>?`;
+            confirmModalText.innerHTML = `Är du säker på att du vill ta bort <strong>${scannedParts[index].partNo}</strong> från listan?`;
             confirmModal.classList.remove('hidden'); confirmModal.classList.add('flex'); lucide.createIcons();
-        }
+        };
 
-        function confirmRemove() {
-            if (itemToDelete !== null) { scannedParts.splice(itemToDelete, 1); itemToDelete = null; markUnsaved(); updateUI(); }
-            closeConfirmModal();
-        }
+        window.confirmRemove = function() {
+            if (itemToDelete !== null) { scannedParts.splice(itemToDelete, 1); itemToDelete = null; window.markUnsaved(); updateUI(); }
+            window.closeConfirmModal();
+        };
 
-        function cancelRemove() { itemToDelete = null; closeConfirmModal(); }
-        function closeConfirmModal() { confirmModal.classList.add('hidden'); confirmModal.classList.remove('flex'); }
+        window.cancelRemove = function() { itemToDelete = null; window.closeConfirmModal(); };
+        window.closeConfirmModal = function() { confirmModal.classList.add('hidden'); confirmModal.classList.remove('flex'); };
 
-        function attemptClearOrder() {
+        window.attemptClearOrder = function() {
             if (hasUnsavedChanges) {
                 unsavedModal.classList.remove('hidden'); unsavedModal.classList.add('flex'); lucide.createIcons();
             } else { clearOrder(); }
-        }
+        };
 
-        function closeUnsavedModal() { unsavedModal.classList.add('hidden'); unsavedModal.classList.remove('flex'); }
-        function forceClearOrder() { closeUnsavedModal(); clearOrder(); }
+        window.closeUnsavedModal = function() { unsavedModal.classList.add('hidden'); unsavedModal.classList.remove('flex'); };
+        window.forceClearOrder = function() { window.closeUnsavedModal(); clearOrder(); };
 
         function clearOrder() {
             currentOrderNo = null; scannedParts = []; orderFinishedCb.checked = false; hasUnsavedChanges = false; updateUI();
         }
 
-        async function finishOrder() {
+        window.finishOrder = async function() {
             if (scannedParts.length === 0 && !orderFinishedCb.checked) return;
-            if (!currentUser) { showToast('Ansluter till molnet...', 'error'); return; }
+            if (!currentUser) { window.showToast('Ansluter till molnet...', 'error'); return; }
 
             try {
                 const originalText = finishBtn.innerHTML;
@@ -479,20 +519,15 @@
                 });
 
                 hasUnsavedChanges = false;
-                showToast('Artiklar inskickade!', 'success');
+                window.showToast('Artiklar inskickade!', 'success');
                 setTimeout(() => {
                     clearOrder(); finishBtn.innerHTML = originalText; finishBtn.disabled = false; lucide.createIcons();
                 }, 1000);
             } catch (error) {
-                showToast('Ett fel uppstod vid sparandet.', 'error');
+                window.showToast('Ett fel uppstod vid sparandet.', 'error');
                 finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Skicka in reservdelar'; finishBtn.disabled = false; lucide.createIcons();
             }
-        }
-
-        window.setManualOrder = setManualOrder; window.addManualPart = addManualPart; window.attemptClearOrder = attemptClearOrder;
-        window.closeUnsavedModal = closeUnsavedModal; window.forceClearOrder = forceClearOrder; window.finishOrder = finishOrder;
-        window.changeQty = changeQty; window.removePart = removePart; window.confirmRemove = confirmRemove; window.cancelRemove = cancelRemove;
-        window.markUnsaved = markUnsaved;
+        };
 
         updateUI();
     </script>

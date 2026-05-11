@@ -180,7 +180,8 @@
         let articleDatabase = [];
         let vehicleDatabase = [];
 
-        fetch('artiklar.json')
+        // cache: 'no-store' tvingar enheten att alltid hämta senaste versionen från GitHub
+        fetch('artiklar.json', { cache: 'no-store' })
             .then(res => { if(!res.ok) throw new Error(); return res.json(); })
             .then(data => { 
                 articleDatabase = data; 
@@ -188,7 +189,7 @@
             })
             .catch(e => console.log("Hittade inget artikelregister."));
 
-        fetch('fordon.json')
+        fetch('fordon.json', { cache: 'no-store' })
             .then(res => { if(!res.ok) throw new Error(); return res.json(); })
             .then(data => { vehicleDatabase = data; })
             .catch(e => console.log("Hittade inget fordonsregister."));

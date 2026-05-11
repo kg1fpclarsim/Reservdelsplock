@@ -92,7 +92,7 @@
                         <i data-lucide="scan-text" class="w-8 h-8"></i>
                         <span class="font-bold text-sm text-center leading-tight">Läs Text<br>(Fota siffror)</span>
                     </button>
-                    <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="processOCR(event)">
+                    <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="window.processOCR(event)">
                 </div>
                 
                 <div class="border-t border-slate-100 my-1"></div>
@@ -105,12 +105,11 @@
                         <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm"></div>
                     </div>
                     
-                    <!-- Ort-Filter (Snabba knappar) -->
-                    <div class="flex items-center justify-center gap-2 flex-wrap">
-                        <span class="text-xs font-bold text-slate-400 uppercase mr-1">Ort:</span>
-                        <button id="loc-btn-ALLA" onclick="setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm">Alla</button>
-                        <button id="loc-btn-VÄXJÖ" onclick="setLocationFilter('VÄXJÖ')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">Växjö</button>
-                        <button id="loc-btn-NYBRO" onclick="setLocationFilter('NYBRO')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm">Nybro</button>
+                    <!-- Ort-Filter (Snabba knappar genereras nu dynamiskt hit!) -->
+                    <div id="location-filter-container" class="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full pb-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Ort:</span>
+                        <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm shrink-0">Alla</button>
+                        <span class="text-xs text-slate-400 italic">Laddar orter...</span>
                     </div>
 
                     <!-- Lägg till knapp -->
@@ -165,28 +164,33 @@
             <!-- Artikelregister / CSV Konverterare -->
             <div id="admin-register-section" class="hidden flex-col gap-4">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 border-dashed mb-4">
-                    <label class="font-bold text-sm mb-2 block text-slate-700">1. Välj fil (Artikel- eller Fordonslista i .csv)</label>
-                    <input type="file" accept=".csv" onchange="handleCsvUpload(event)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2">
+                        <i data-lucide="file-json" class="w-6 h-6 text-blue-600"></i> Uppdatera Sökregister
+                    </h3>
+                    <p class="text-slate-500 text-sm mb-6">Ladda upp dina CSV-filer här för att konvertera dem till webbformat (.json). Verktyget känner automatiskt av om det är artiklar eller fordon.</p>
+                    
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 border-dashed mb-4">
+                        <label class="font-bold text-sm mb-2 block text-slate-700">1. Välj fil (Artikel- eller Fordonslista i .csv)</label>
+                        <input type="file" accept=".csv" onchange="window.handleCsvUpload(event)" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    </div>
+                    
+                    <div class="text-sm text-slate-500 italic">
+                        När du laddat ner den nya .json-filen, ladda upp den på GitHub i samma mapp som dina appar. (Observera att artikellistan nu även sparar städer i bakgrunden för ort-söket!)
+                    </div>
                 </div>
                 
-                <div class="text-sm text-slate-500 italic">
-                    När du laddat ner den nya .json-filen, ladda upp den på GitHub i samma mapp som dina appar. (Observera att artikellistan nu även sparar städer i bakgrunden för ort-söket!)
-                </div>
-            </div>
-            
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-3">
-                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h3 class="font-bold text-slate-800">Artiklar</h3>
-                    <span id="reg-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Laddar...</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <h3 class="font-bold text-slate-800">Fordon</h3>
-                    <span id="veh-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Laddar...</span>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <h3 class="font-bold text-slate-800">Artiklar</h3>
+                        <span id="reg-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Laddar...</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-slate-800">Fordon</h3>
+                        <span id="veh-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Laddar...</span>
+                    </div>
                 </div>
             </div>
         </div>
-        </div> <!-- Ny stängning för wrap-diven -->
     </main>
 
     <!-- Modals (Scanner, Confirm, Unsaved, Archive) -->
@@ -265,7 +269,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global showToast för att undvika ReferenceError från inbäddade event/callbacks
+        // Säker global Toast-funktion som alltid är nåbar
         window.showToast = function(msg, type = 'info') {
             const toast = document.getElementById('toast');
             document.getElementById('toast-msg').textContent = msg;
@@ -275,9 +279,6 @@
             toast.classList.remove('translate-y-[150%]');
             setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
         };
-        
-        // Fäst funktionen lokalt så att externa bibliotek alltid hittar den
-        const showToast = window.showToast;
 
         const firebaseConfig = {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
@@ -299,7 +300,8 @@
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            if (currentMode === 'ADMIN' && currentUser && !unsubAdmin) startAdminListener();
+            // STARTA LÄSNING AV ORDRAR GLOBALT ISTÄLLET FÖR BARA I ADMIN
+            if (currentUser && !window.unsubOrders) window.startGlobalOrdersListener();
         });
 
         // --- LÄS IN REGISTER (LOKALT FRÅN GITHUB) ---
@@ -312,10 +314,45 @@
                 articleDatabase = data;
                 document.getElementById('reg-status-badge').textContent = `${data.length} st`;
                 document.getElementById('reg-status-badge').className = "bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200";
+                window.generateLocationButtons(data); // Generera orter automatiskt!
             }).catch(e => {
                 document.getElementById('reg-status-badge').textContent = "Saknas";
                 document.getElementById('reg-status-badge').className = "bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200";
             });
+
+        // --- DYNAMISKA ORT-KNAPPAR ---
+        window.knownLocations = [];
+        window.generateLocationButtons = function(data) {
+            const container = document.getElementById('location-filter-container');
+            if(!container) return;
+
+            let locations = new Set();
+            data.forEach(item => {
+                if(item.b && item.b.trim() !== '') {
+                    // Tar bara unika värden som är korta nog att vara en ort/märkning (max 25 tecken)
+                    if(item.b.length <= 25) {
+                        locations.add(item.b.trim().toUpperCase());
+                    }
+                }
+            });
+
+            const uniqueLocs = Array.from(locations).sort();
+            window.knownLocations = uniqueLocs.map(l => l.toLowerCase());
+
+            container.innerHTML = `<span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Ort:</span>
+                <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm shrink-0">Alla</button>`;
+
+            uniqueLocs.forEach(loc => {
+                const btn = document.createElement('button');
+                btn.id = `loc-btn-${loc}`;
+                btn.onclick = () => window.setLocationFilter(loc);
+                btn.className = "loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm shrink-0";
+                
+                // Formaterar snyggt (t.ex. AHL eller Nybro)
+                btn.textContent = loc.charAt(0) + loc.slice(1).toLowerCase();
+                container.appendChild(btn);
+            });
+        };
 
         fetch('fordon.json')
             .then(res => { if(!res.ok) throw new Error(); return res.json(); })
@@ -356,7 +393,7 @@
                     div.onclick = () => {
                         orderInput.value = match.i ? match.i : match.r; 
                         orderDropdown.classList.add('hidden');
-                        setManualOrder(); 
+                        window.setManualOrder(); 
                     };
                     orderDropdown.appendChild(div);
                 });
@@ -365,11 +402,9 @@
 
         // --- ARTIKEL SÖKNING & ORT-FILTER ---
         let currentLocFilter = 'ALLA';
-        const knownLocations = ['växjö', 'nybro', 'jönköping']; // Lägg till fler vid behov
 
         window.setLocationFilter = function(loc) {
             currentLocFilter = loc;
-            // Uppdatera knapparnas utseende
             document.querySelectorAll('.loc-btn').forEach(btn => {
                 btn.classList.remove('bg-blue-600', 'text-white');
                 btn.classList.add('bg-white', 'text-slate-600', 'border', 'border-slate-200');
@@ -379,8 +414,7 @@
                 activeBtn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200');
                 activeBtn.classList.add('bg-blue-600', 'text-white');
             }
-            // Tvinga en ny sökning om det står text i rutan
-            partInput.dispatchEvent(new Event('input'));
+            partInput.dispatchEvent(new Event('input')); // Tvingar omsökning direkt
         };
 
         const partInput = document.getElementById('manual-part-input');
@@ -394,19 +428,14 @@
             const matches = articleDatabase.filter(item => {
                 const desc = (item.b || "").toLowerCase();
                 
-                // --- ORT FILTERING LOGIK ---
                 if (currentLocFilter !== 'ALLA') {
                     const filterLower = currentLocFilter.toLowerCase();
-                    // Är det en "allmän" artikel? (Saknar stadsnamn)
-                    const isGeneric = !knownLocations.some(loc => desc.includes(loc));
-                    // Tillhör den den valda staden?
-                    const matchesLocation = desc.includes(filterLower);
-                    
-                    // Om den är kopplad till EN ANNAN stad än den vi valt, dölj den!
+                    // Jämför dynamiskt med alla kända orter vi hittade i filen
+                    const isGeneric = !window.knownLocations.some(loc => desc === loc || desc.includes(loc));
+                    const matchesLocation = desc === filterLower || desc.includes(filterLower);
                     if (!isGeneric && !matchesLocation) return false;
                 }
 
-                // Sök i art.nr, titel, tillverkare OCH beskrivning. (Delar upp orden så "lufttank växjö" funkar)
                 const searchStr = item.a.toLowerCase() + " " + item.t.toLowerCase() + " " + (item.m || "").toLowerCase() + " " + desc;
                 const searchTerms = val.split(' ').filter(t => t.length > 0);
                 return searchTerms.every(term => searchStr.includes(term));
@@ -424,7 +453,7 @@
                         <div class="text-xs text-slate-500 leading-tight">${match.t} ${match.m ? `<span class="italic text-blue-400">(${match.m})</span>` : ''}</div>
                     `;
                     div.onclick = () => {
-                        addPartToList(match.a);
+                        window.addPartToList(match.a);
                         partInput.value = '';
                         dropdown.classList.add('hidden');
                         partInput.focus();
@@ -434,7 +463,6 @@
             } else { dropdown.classList.add('hidden'); }
         });
 
-        // Dölj dropdowns om man klickar utanför
         document.addEventListener('click', (e) => {
             if(!partInput.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.add('hidden');
             if(!orderInput.contains(e.target) && !orderDropdown.contains(e.target)) orderDropdown.classList.add('hidden');
@@ -443,14 +471,16 @@
         // --- STATE ---
         let currentMode = 'SHOP'; 
         let currentOrderNo = null;
+        let currentOrderDocId = null; // NYTT: Håller reda på unikt ID i databasen!
         let scannedParts = []; 
-        let unsubAdmin = null; 
+        window.unsubOrders = null; // NYTT: Ersätter unsubAdmin
         let itemToDelete = null; 
         let orderToArchive = null; 
         let hasUnsavedChanges = false;
         let isInputSectionVisible = true; 
         let adminTab = 'ACTIVE'; 
         let allOrdersData = []; 
+        let isOrdersLoaded = false; // NYTT: Kollar om databasen hunnit synka i bakgrunden
         let html5QrcodeScanner = null;
         let scanMode = null; 
         let isScanning = false;
@@ -481,7 +511,7 @@
 
         lucide.createIcons();
 
-        function toggleInputSection() {
+        window.toggleInputSection = function() {
             isInputSectionVisible = !isInputSectionVisible;
             if(isInputSectionVisible) {
                 addPartSection.classList.remove('hidden'); addPartSection.classList.add('flex');
@@ -490,9 +520,9 @@
                 addPartSection.classList.add('hidden'); addPartSection.classList.remove('flex');
                 inputToggleIcon.classList.add('rotate-180');
             }
-        }
+        };
 
-        function toggleViewMode() {
+        window.toggleViewMode = function() {
             if (currentMode === 'SHOP') {
                 currentMode = 'ADMIN';
                 uiMain.classList.add('hidden'); uiMain.classList.remove('flex');
@@ -501,7 +531,7 @@
                 viewToggleText.textContent = "Verkstadsvy";
                 viewToggleBtn.innerHTML = `<i data-lucide="wrench" class="w-4 h-4"></i><span id="view-toggle-text">Verkstadsvy</span>`;
                 lucide.createIcons();
-                if (currentUser) startAdminListener();
+                if(adminTab !== 'REGISTER') renderAdminView();
             } else {
                 currentMode = 'SHOP';
                 uiAdmin.classList.add('hidden'); uiAdmin.classList.remove('flex');
@@ -509,10 +539,9 @@
                 viewToggleText.textContent = "Adminvy";
                 viewToggleBtn.innerHTML = `<i data-lucide="layout-dashboard" class="w-4 h-4"></i><span id="view-toggle-text">Adminvy</span>`;
                 lucide.createIcons();
-                if (unsubAdmin) { unsubAdmin(); unsubAdmin = null; }
                 updateUI();
             }
-        }
+        };
 
         function updateUI() {
             if (currentMode !== 'SHOP') return;
@@ -562,42 +591,51 @@
                     </div>
                     <div class="flex items-center gap-3 shrink-0">
                         <div class="flex items-center bg-slate-100 rounded-lg border border-slate-200">
-                            <button onclick="changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
+                            <button onclick="window.changeQty(${index}, -1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-l-lg transition-colors"><i data-lucide="minus" class="w-4 h-4"></i></button>
                             <span class="w-8 text-center font-bold text-slate-800 select-none">${part.qty}</span>
-                            <button onclick="changeQty(${index}, 1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-r-lg transition-colors"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                            <button onclick="window.changeQty(${index}, 1)" class="p-2 text-slate-600 hover:bg-slate-200 rounded-r-lg transition-colors"><i data-lucide="plus" class="w-4 h-4"></i></button>
                         </div>
-                        <button onclick="removePart(${index})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                        <button onclick="window.removePart(${index})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                     </div>`;
                 partsListContainer.appendChild(itemDiv);
             });
             lucide.createIcons();
         }
 
-        function markUnsaved() { hasUnsavedChanges = true; }
+        window.markUnsaved = function() { hasUnsavedChanges = true; };
 
         async function loadOrder(orderNo) {
             if (!currentUser) { window.showToast("Väntar på systemanslutning...", "error"); return; }
-            currentOrderNo = orderNo; scannedParts = []; orderFinishedCb.checked = false;
-            if (!isInputSectionVisible) toggleInputSection();
-            window.showToast(`Hämtar data för ${orderNo}...`);
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderNo);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    scannedParts = data.parts || [];
-                    orderFinishedCb.checked = data.isFinished || false;
-                    if(data.isFinished) {
-                        window.showToast(`Informationen var markerad som färdig`, 'info');
-                        if (isInputSectionVisible) toggleInputSection();
-                    } else { window.showToast(`Hämtade befintliga data`, 'success'); }
-                } else { window.showToast(`Nytt fordon/order skapat`, 'success'); }
-                hasUnsavedChanges = false;
-            } catch (error) { window.showToast("Kunde inte kontrollera historik", "error"); }
+            if (!isOrdersLoaded) {
+                window.showToast("Synkroniserar databas, vänta ett ögonblick...", "info");
+                setTimeout(() => loadOrder(orderNo), 800);
+                return;
+            }
+
+            // Leta efter befintlig PÅGÅENDE order i minnet
+            const ongoingOrder = allOrdersData.find(o => o.orderId === orderNo && !o.isFinished);
+
+            if (ongoingOrder) {
+                currentOrderDocId = ongoingOrder.docId; // Återuppta specifik order
+                currentOrderNo = ongoingOrder.orderId;
+                scannedParts = ongoingOrder.parts || [];
+                orderFinishedCb.checked = false;
+                window.showToast(`Hittade pågående plockning för ${orderNo}`, 'success');
+            } else {
+                // Ingen pågående hittades (eller den förra var avslutad) - SKAPA NY!
+                currentOrderDocId = `${orderNo}-${Date.now()}`;
+                currentOrderNo = orderNo;
+                scannedParts = [];
+                orderFinishedCb.checked = false;
+                window.showToast(`Ny plockning startad för ${orderNo}`, 'success');
+            }
+
+            if (!isInputSectionVisible) window.toggleInputSection();
+            hasUnsavedChanges = false;
             updateUI();
         }
 
-        function setManualOrder() {
+        window.setManualOrder = function() {
             const val = orderInput.value;
             if (val.trim() === '') { window.showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
             let formattedOrder = val.trim().toUpperCase();
@@ -607,7 +645,7 @@
                 if (match) formattedOrder = `AO-${match[1]}-${match[2]}`;
             }
             orderInput.value = ''; loadOrder(formattedOrder);
-        }
+        };
 
         function parsePartNumber(rawInput) {
             let text = rawInput.trim();
@@ -619,7 +657,7 @@
             return text;
         }
 
-        function addPartToList(rawPartNumber) {
+        window.addPartToList = function(rawPartNumber) {
             if (!rawPartNumber) return;
             const cleanedPartNo = parsePartNumber(rawPartNumber).toUpperCase();
             const existingPartIndex = scannedParts.findIndex(p => p.partNo === cleanedPartNo);
@@ -630,52 +668,52 @@
                 scannedParts.unshift({ partNo: cleanedPartNo, qty: 1 });
                 window.showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
             }
-            markUnsaved(); if(navigator.vibrate) navigator.vibrate(50); updateUI();
-        }
+            window.markUnsaved(); if(navigator.vibrate) navigator.vibrate(50); updateUI();
+        };
 
-        function addManualPart() {
+        window.addManualPart = function() {
             const val = partInput.value;
             if (val.trim() === '') return;
-            addPartToList(val); partInput.value = ''; dropdown.classList.add('hidden'); partInput.focus();
-        }
+            window.addPartToList(val); partInput.value = ''; dropdown.classList.add('hidden'); partInput.focus();
+        };
 
-        partInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addManualPart(); });
-        orderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') setManualOrder(); });
+        partInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.addManualPart(); });
+        orderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.setManualOrder(); });
 
-        function changeQty(index, delta) {
+        window.changeQty = function(index, delta) {
             const newQty = scannedParts[index].qty + delta;
-            if (newQty > 0) { scannedParts[index].qty = newQty; markUnsaved(); updateUI(); } 
-            else { removePart(index); }
-        }
+            if (newQty > 0) { scannedParts[index].qty = newQty; window.markUnsaved(); updateUI(); } 
+            else { window.removePart(index); }
+        };
 
-        function removePart(index) {
+        window.removePart = function(index) {
             itemToDelete = index;
             confirmModalText.innerHTML = `Är du säker på att du vill ta bort <strong>${scannedParts[index].partNo}</strong> från listan?`;
             confirmModal.classList.remove('hidden'); confirmModal.classList.add('flex'); lucide.createIcons();
-        }
+        };
 
-        function confirmRemove() {
-            if (itemToDelete !== null) { scannedParts.splice(itemToDelete, 1); itemToDelete = null; markUnsaved(); updateUI(); }
-            closeConfirmModal();
-        }
+        window.confirmRemove = function() {
+            if (itemToDelete !== null) { scannedParts.splice(itemToDelete, 1); itemToDelete = null; window.markUnsaved(); updateUI(); }
+            window.closeConfirmModal();
+        };
 
-        function cancelRemove() { itemToDelete = null; closeConfirmModal(); }
-        function closeConfirmModal() { confirmModal.classList.add('hidden'); confirmModal.classList.remove('flex'); }
+        window.cancelRemove = function() { itemToDelete = null; window.closeConfirmModal(); };
+        window.closeConfirmModal = function() { confirmModal.classList.add('hidden'); confirmModal.classList.remove('flex'); };
 
-        function attemptClearOrder() {
+        window.attemptClearOrder = function() {
             if (hasUnsavedChanges) {
                 unsavedModal.classList.remove('hidden'); unsavedModal.classList.add('flex'); lucide.createIcons();
             } else { clearOrder(); }
-        }
+        };
 
-        function closeUnsavedModal() { unsavedModal.classList.add('hidden'); unsavedModal.classList.remove('flex'); }
-        function forceClearOrder() { closeUnsavedModal(); clearOrder(); }
+        window.closeUnsavedModal = function() { unsavedModal.classList.add('hidden'); unsavedModal.classList.remove('flex'); };
+        window.forceClearOrder = function() { window.closeUnsavedModal(); clearOrder(); };
 
         function clearOrder() {
-            currentOrderNo = null; scannedParts = []; orderFinishedCb.checked = false; hasUnsavedChanges = false; updateUI();
+            currentOrderNo = null; currentOrderDocId = null; scannedParts = []; orderFinishedCb.checked = false; hasUnsavedChanges = false; updateUI();
         }
 
-        async function finishOrder() {
+        window.finishOrder = async function() {
             if (scannedParts.length === 0 && !orderFinishedCb.checked) return;
             if (!currentUser) { window.showToast('Ansluter till molnet...', 'error'); return; }
 
@@ -685,7 +723,8 @@
                 finishBtn.disabled = true; lucide.createIcons();
 
                 const isFinished = orderFinishedCb.checked;
-                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', currentOrderNo);
+                // Använder currentOrderDocId istället för orderNo för att spara en unik kopia
+                const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', currentOrderDocId);
                 
                 await setDoc(orderRef, {
                     orderId: currentOrderNo,
@@ -704,9 +743,9 @@
                 window.showToast('Ett fel uppstod vid sparandet.', 'error');
                 finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Spara Arbetsorder'; finishBtn.disabled = false; lucide.createIcons();
             }
-        }
+        };
 
-        function switchAdminTab(tab) {
+        window.switchAdminTab = function(tab) {
             adminTab = tab;
             const tabActive = document.getElementById('tab-active');
             const tabArchived = document.getElementById('tab-archived');
@@ -731,19 +770,23 @@
                 }
                 renderAdminView();
             }
-        }
+        };
 
-        function startAdminListener() {
+        // Bytte ut startAdminListener mot en global listener
+        window.startGlobalOrdersListener = function() {
             if (!currentUser) return;
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
-            unsubAdmin = onSnapshot(colRef, (snapshot) => {
+            window.unsubOrders = onSnapshot(colRef, (snapshot) => {
                 allOrdersData = [];
                 snapshot.forEach(doc => {
                     let data = doc.data(); data.docId = doc.id; allOrdersData.push(data);
                 });
-                if(adminTab !== 'REGISTER') renderAdminView();
-            }, (error) => { adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`; });
-        }
+                isOrdersLoaded = true; // Markera att vi hämtat datan
+                if(currentMode === 'ADMIN' && adminTab !== 'REGISTER') renderAdminView();
+            }, (error) => { 
+                if(currentMode === 'ADMIN') adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`; 
+            });
+        };
 
         function renderAdminView() {
             adminOrdersGrid.innerHTML = '';
@@ -780,8 +823,8 @@
                 } else { partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`; }
 
                 const actionBtnHtml = adminTab === 'ACTIVE'
-                    ? `<button onclick="attemptArchive('${order.docId}', '${order.orderId}')" class="text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 hover:bg-blue-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
-                    : `<button onclick="restoreOrder('${order.docId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
+                    ? `<button onclick="window.attemptArchive('${order.docId}', '${order.orderId}')" class="text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 hover:bg-blue-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
+                    : `<button onclick="window.restoreOrder('${order.docId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
 
                 const card = document.createElement('div');
                 card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col";
@@ -809,7 +852,7 @@
             lucide.createIcons();
         }
 
-        // CSV UPLOAD & SMART KONVERTERING LOGIK (NU MED BESKRIVNINGSKOLUMN)
+        // CSV UPLOAD & SMART KONVERTERING LOGIK
         window.handleCsvUpload = function(e) {
             const file = e.target.files[0];
             if(!file) return;
@@ -881,52 +924,54 @@
             });
         };
 
-        function attemptArchive(docId, displayId) {
+        window.attemptArchive = function(docId, displayId) {
             orderToArchive = docId;
             archiveModalText.innerHTML = `Är du säker på att du vill arkivera <strong>${displayId}</strong>?`;
             archiveModal.classList.remove('hidden'); archiveModal.classList.add('flex'); lucide.createIcons();
-        }
+        };
 
-        async function confirmArchive() {
+        window.confirmArchive = async function() {
             if (!orderToArchive || !currentUser) return;
-            const idToArchive = orderToArchive; closeArchiveModal(); window.showToast('Arkiverar...', 'info');
+            const idToArchive = orderToArchive; window.closeArchiveModal(); window.showToast('Arkiverar...', 'info');
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', idToArchive), { isArchived: true }, { merge: true });
                 window.showToast('Ordern har arkiverats!', 'success');
             } catch (error) { window.showToast('Kunde inte arkivera ordern.', 'error'); }
-        }
+        };
 
-        async function restoreOrder(docId) {
+        window.restoreOrder = async function(docId) {
             if (!currentUser) return;
             window.showToast('Återställer order...', 'info');
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', docId), { isArchived: false }, { merge: true });
                 window.showToast('Ordern har flyttats till Aktiva!', 'success');
             } catch (error) { window.showToast('Kunde inte återställa ordern.', 'error'); }
-        }
+        };
 
-        function closeArchiveModal() { archiveModal.classList.add('hidden'); archiveModal.classList.remove('flex'); orderToArchive = null; }
+        window.closeArchiveModal = function() { archiveModal.classList.add('hidden'); archiveModal.classList.remove('flex'); orderToArchive = null; };
 
         function initScannerIfNeeded() { if (!html5QrcodeScanner) html5QrcodeScanner = new Html5Qrcode("reader"); }
-        function startScanning(mode) {
+        
+        window.startScanning = function(mode) {
             scanMode = mode; scannerTitle.textContent = mode === 'ORDER' ? 'Skanna Arbetsorder QR' : 'Skanna Reservdel';
             uiMain.classList.add('hidden'); uiScanner.classList.remove('hidden'); uiScanner.classList.add('flex');
             initScannerIfNeeded();
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess, () => {})
-                .then(() => { isScanning = true; }).catch(err => { stopScanning(); window.showToast('Kunde inte starta kameran.', 'error'); });
-        }
+                .then(() => { isScanning = true; }).catch(err => { window.stopScanning(); window.showToast('Kunde inte starta kameran.', 'error'); });
+        };
 
-        function stopScanning() {
+        window.stopScanning = function() {
             if (isScanning && html5QrcodeScanner) {
                 html5QrcodeScanner.stop().then(() => { isScanning = false; closeScannerUI(); }).catch(err => { closeScannerUI(); });
             } else { closeScannerUI(); }
-        }
+        };
+        
         function closeScannerUI() { uiScanner.classList.add('hidden'); uiScanner.classList.remove('flex'); uiMain.classList.remove('hidden'); }
 
         function onScanSuccess(decodedText) {
             if (scanMode === 'ORDER') {
                 if(navigator.vibrate) navigator.vibrate(100);
-                stopScanning();
+                window.stopScanning();
                 let val = decodedText.trim().toUpperCase();
                 const cleanedForAo = val.replace(/[^A-Z0-9]/g, '');
                 if (cleanedForAo.length >= 5 && /^(?:AO)?\d+$/.test(cleanedForAo)) {
@@ -934,7 +979,7 @@
                     if (match) val = `AO-${match[1]}-${match[2]}`;
                 }
                 loadOrder(val);
-            } else if (scanMode === 'PART') { addPartToList(decodedText); stopScanning(); }
+            } else if (scanMode === 'PART') { window.addPartToList(decodedText); window.stopScanning(); }
         }
 
         function showOcrSelection(matches) {
@@ -943,13 +988,14 @@
                 const btn = document.createElement('button');
                 btn.className = "w-full text-left bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 p-4 rounded-xl text-xl font-bold text-slate-800 flex justify-between items-center";
                 btn.innerHTML = `<span>${match}</span> <i data-lucide="chevron-right" class="w-5 h-5 text-blue-400"></i>`;
-                btn.onclick = () => { addPartToList(match); closeOcrModal(); }; container.appendChild(btn);
+                btn.onclick = () => { window.addPartToList(match); window.closeOcrModal(); }; container.appendChild(btn);
             });
             lucide.createIcons(); document.getElementById('ocr-select-modal').classList.remove('hidden'); document.getElementById('ocr-select-modal').classList.add('flex');
         }
-        function closeOcrModal() { document.getElementById('ocr-select-modal').classList.add('hidden'); document.getElementById('ocr-select-modal').classList.remove('flex'); }
+        
+        window.closeOcrModal = function() { document.getElementById('ocr-select-modal').classList.add('hidden'); document.getElementById('ocr-select-modal').classList.remove('flex'); };
 
-        async function processOCR(event) {
+        window.processOCR = async function(event) {
             const file = event.target.files[0]; if (!file) return;
             document.getElementById('ocr-loading').classList.remove('hidden'); document.getElementById('ocr-loading').classList.add('flex'); lucide.createIcons();
             try {
@@ -957,18 +1003,11 @@
                 const text = ret.data.text; const rawMatches = text.match(/\b\d{2,25}\b/g) || [];
                 let uniqueMatches = [...new Set(rawMatches)]; uniqueMatches.sort((a, b) => b.length - a.length);
                 if (uniqueMatches.length === 0) window.showToast("Hittade inga tydliga siffror i bilden.", "error");
-                else if (uniqueMatches.length === 1) addPartToList(uniqueMatches[0]);
+                else if (uniqueMatches.length === 1) window.addPartToList(uniqueMatches[0]);
                 else showOcrSelection(uniqueMatches);
             } catch(err) { window.showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
             } finally { document.getElementById('ocr-loading').classList.add('hidden'); document.getElementById('ocr-loading').classList.remove('flex'); event.target.value = ''; }
-        }
-
-        window.startScanning = startScanning; window.stopScanning = stopScanning; window.setManualOrder = setManualOrder; window.addManualPart = addManualPart;
-        window.attemptClearOrder = attemptClearOrder; window.closeUnsavedModal = closeUnsavedModal; window.forceClearOrder = forceClearOrder; window.finishOrder = finishOrder;
-        window.changeQty = changeQty; window.removePart = removePart; window.confirmRemove = confirmRemove; window.cancelRemove = cancelRemove;
-        window.toggleViewMode = toggleViewMode; window.processOCR = processOCR; window.closeOcrModal = closeOcrModal; window.markUnsaved = markUnsaved;
-        window.toggleInputSection = toggleInputSection; window.attemptArchive = attemptArchive; window.confirmArchive = confirmArchive;
-        window.closeArchiveModal = closeArchiveModal; window.switchAdminTab = switchAdminTab; window.restoreOrder = restoreOrder;
+        };
 
         updateUI();
     </script>

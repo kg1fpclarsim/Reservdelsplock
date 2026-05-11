@@ -42,7 +42,6 @@
     </header>
 
     <!-- HUVUDVY (Verkstad) -->
-    <!-- Kraftig padding i botten (pb-32) för att alltid gå att scrolla förbi tangentbordet på Android -->
     <main id="main-ui" class="flex-grow p-4 pb-32 overflow-y-auto flex flex-col gap-4">
         
         <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6">
@@ -105,11 +104,11 @@
                         <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm"></div>
                     </div>
                     
-                    <!-- Ort-Filter (Snabba knappar genereras nu dynamiskt hit!) -->
+                    <!-- LAGER-Filter (Ändrat från Ort) -->
                     <div id="location-filter-container" class="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full pb-1">
-                        <span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Ort:</span>
+                        <span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Lager:</span>
                         <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm shrink-0">Alla</button>
-                        <span class="text-xs text-slate-400 italic">Laddar orter...</span>
+                        <span class="text-xs text-slate-400 italic">Laddar lager...</span>
                     </div>
 
                     <!-- Lägg till knapp -->
@@ -132,7 +131,7 @@
                     <span class="font-bold text-slate-800 text-lg">Ordern är färdig</span>
                     <span class="text-xs text-slate-500">Markera om inga fler delar ska plockas</span>
                 </div>
-                <input type="checkbox" id="order-finished-cb" onchange="markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
+                <input type="checkbox" id="order-finished-cb" onchange="window.markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
             </label>
 
             <button onclick="finishOrder()" id="finish-btn" class="w-full bg-blue-800 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity shrink-0 flex items-center justify-center gap-2">
@@ -144,7 +143,6 @@
 
     <!-- ADMINVY (Kontoret) -->
     <main id="admin-ui" class="hidden flex-grow overflow-y-auto flex-col bg-slate-50 relative">
-        <!-- STICKY TOP MENU FÖR ADMIN -->
         <div class="sticky top-0 bg-slate-50 z-20 px-4 pt-4 border-b border-slate-200 shadow-sm">
             <div class="flex justify-between items-center mb-2">
                 <h2 class="text-2xl font-bold text-slate-800">Arbetsordrar</h2>
@@ -157,7 +155,6 @@
             </div>
         </div>
         
-        <!-- INNEHÅLL (Grid & Register) -->
         <div class="p-4 pb-12 flex flex-col gap-4">
             <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
@@ -175,7 +172,7 @@
                     </div>
                     
                     <div class="text-sm text-slate-500 italic">
-                        När du laddat ner den nya .json-filen, ladda upp den på GitHub i samma mapp som dina appar. (Observera att artikellistan nu även sparar städer i bakgrunden för ort-söket!)
+                        När du laddat ner den nya .json-filen, ladda upp den på GitHub i samma mapp som dina appar. (Observera att artikellistan nu även sparar städer i bakgrunden för lager-söket!)
                     </div>
                 </div>
                 
@@ -193,7 +190,7 @@
         </div>
     </main>
 
-    <!-- Modals (Scanner, Confirm, Unsaved, Archive) -->
+    <!-- Modals -->
     <div id="scanner-ui" class="hidden absolute inset-0 bg-black z-50 flex flex-col">
         <div class="flex justify-between items-center p-4 bg-black/80 text-white">
             <h3 id="scanner-title" class="text-lg font-semibold">Skannar...</h3>
@@ -269,7 +266,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Säker global Toast-funktion som alltid är nåbar
         window.showToast = function(msg, type = 'info') {
             const toast = document.getElementById('toast');
             document.getElementById('toast-msg').textContent = msg;
@@ -300,7 +296,6 @@
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            // STARTA LÄSNING AV ORDRAR GLOBALT ISTÄLLET FÖR BARA I ADMIN
             if (currentUser && !window.unsubOrders) window.startGlobalOrdersListener();
         });
 
@@ -314,13 +309,13 @@
                 articleDatabase = data;
                 document.getElementById('reg-status-badge').textContent = `${data.length} st`;
                 document.getElementById('reg-status-badge').className = "bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200";
-                window.generateLocationButtons(data); // Generera orter automatiskt!
+                window.generateLocationButtons(data); 
             }).catch(e => {
                 document.getElementById('reg-status-badge').textContent = "Saknas";
                 document.getElementById('reg-status-badge').className = "bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200";
             });
 
-        // --- DYNAMISKA ORT-KNAPPAR ---
+        // --- DYNAMISKA LAGER-KNAPPAR ---
         window.knownLocations = [];
         window.generateLocationButtons = function(data) {
             const container = document.getElementById('location-filter-container');
@@ -329,7 +324,6 @@
             let locations = new Set();
             data.forEach(item => {
                 if(item.b && item.b.trim() !== '') {
-                    // Tar bara unika värden som är korta nog att vara en ort/märkning (max 25 tecken)
                     if(item.b.length <= 25) {
                         locations.add(item.b.trim().toUpperCase());
                     }
@@ -339,7 +333,7 @@
             const uniqueLocs = Array.from(locations).sort();
             window.knownLocations = uniqueLocs.map(l => l.toLowerCase());
 
-            container.innerHTML = `<span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Ort:</span>
+            container.innerHTML = `<span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Lager:</span>
                 <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm shrink-0">Alla</button>`;
 
             uniqueLocs.forEach(loc => {
@@ -347,8 +341,6 @@
                 btn.id = `loc-btn-${loc}`;
                 btn.onclick = () => window.setLocationFilter(loc);
                 btn.className = "loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm shrink-0";
-                
-                // Formaterar snyggt (t.ex. AHL eller Nybro)
                 btn.textContent = loc.charAt(0) + loc.slice(1).toLowerCase();
                 container.appendChild(btn);
             });
@@ -400,7 +392,7 @@
             } else { orderDropdown.classList.add('hidden'); }
         });
 
-        // --- ARTIKEL SÖKNING & ORT-FILTER ---
+        // --- ARTIKEL SÖKNING & LAGER-FILTER ---
         let currentLocFilter = 'ALLA';
 
         window.setLocationFilter = function(loc) {
@@ -414,7 +406,7 @@
                 activeBtn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200');
                 activeBtn.classList.add('bg-blue-600', 'text-white');
             }
-            partInput.dispatchEvent(new Event('input')); // Tvingar omsökning direkt
+            partInput.dispatchEvent(new Event('input')); 
         };
 
         const partInput = document.getElementById('manual-part-input');
@@ -430,7 +422,6 @@
                 
                 if (currentLocFilter !== 'ALLA') {
                     const filterLower = currentLocFilter.toLowerCase();
-                    // Jämför dynamiskt med alla kända orter vi hittade i filen
                     const isGeneric = !window.knownLocations.some(loc => desc === loc || desc.includes(loc));
                     const matchesLocation = desc === filterLower || desc.includes(filterLower);
                     if (!isGeneric && !matchesLocation) return false;
@@ -471,16 +462,16 @@
         // --- STATE ---
         let currentMode = 'SHOP'; 
         let currentOrderNo = null;
-        let currentOrderDocId = null; // NYTT: Håller reda på unikt ID i databasen!
+        let currentOrderDocId = null; 
         let scannedParts = []; 
-        window.unsubOrders = null; // NYTT: Ersätter unsubAdmin
+        window.unsubOrders = null; 
         let itemToDelete = null; 
         let orderToArchive = null; 
         let hasUnsavedChanges = false;
         let isInputSectionVisible = true; 
         let adminTab = 'ACTIVE'; 
         let allOrdersData = []; 
-        let isOrdersLoaded = false; // NYTT: Kollar om databasen hunnit synka i bakgrunden
+        let isOrdersLoaded = false; 
         let html5QrcodeScanner = null;
         let scanMode = null; 
         let isScanning = false;
@@ -612,17 +603,15 @@
                 return;
             }
 
-            // Leta efter befintlig PÅGÅENDE order i minnet
             const ongoingOrder = allOrdersData.find(o => o.orderId === orderNo && !o.isFinished);
 
             if (ongoingOrder) {
-                currentOrderDocId = ongoingOrder.docId; // Återuppta specifik order
+                currentOrderDocId = ongoingOrder.docId; 
                 currentOrderNo = ongoingOrder.orderId;
                 scannedParts = ongoingOrder.parts || [];
                 orderFinishedCb.checked = false;
                 window.showToast(`Hittade pågående plockning för ${orderNo}`, 'success');
             } else {
-                // Ingen pågående hittades (eller den förra var avslutad) - SKAPA NY!
                 currentOrderDocId = `${orderNo}-${Date.now()}`;
                 currentOrderNo = orderNo;
                 scannedParts = [];
@@ -723,7 +712,6 @@
                 finishBtn.disabled = true; lucide.createIcons();
 
                 const isFinished = orderFinishedCb.checked;
-                // Använder currentOrderDocId istället för orderNo för att spara en unik kopia
                 const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', currentOrderDocId);
                 
                 await setDoc(orderRef, {
@@ -772,7 +760,6 @@
             }
         };
 
-        // Bytte ut startAdminListener mot en global listener
         window.startGlobalOrdersListener = function() {
             if (!currentUser) return;
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'orders');
@@ -781,7 +768,7 @@
                 snapshot.forEach(doc => {
                     let data = doc.data(); data.docId = doc.id; allOrdersData.push(data);
                 });
-                isOrdersLoaded = true; // Markera att vi hämtat datan
+                isOrdersLoaded = true; 
                 if(currentMode === 'ADMIN' && adminTab !== 'REGISTER') renderAdminView();
             }, (error) => { 
                 if(currentMode === 'ADMIN') adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`; 
@@ -852,7 +839,6 @@
             lucide.createIcons();
         }
 
-        // CSV UPLOAD & SMART KONVERTERING LOGIK
         window.handleCsvUpload = function(e) {
             const file = e.target.files[0];
             if(!file) return;

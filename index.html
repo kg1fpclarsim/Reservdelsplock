@@ -24,12 +24,16 @@
         #reader { border: none !important; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* CSS för att hantera Kompakt Sökläge smidigt */
+        .compact-hide { transition: all 0.3s ease-in-out; opacity: 1; max-height: 500px; overflow: hidden; }
+        body.search-mode-active .compact-hide { opacity: 0; max-height: 0; margin: 0; padding-top: 0; padding-bottom: 0; border: none; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-[100dvh] flex flex-col overflow-hidden">
 
-    <!-- Header -->
-    <header class="bg-blue-800 text-white p-4 shadow-md z-10 flex justify-between items-center shrink-0">
+    <!-- Header (Döljs vid sökning) -->
+    <header class="bg-blue-800 text-white p-4 shadow-md z-10 flex justify-between items-center shrink-0 compact-hide">
         <div class="flex items-center gap-2">
             <i data-lucide="wrench" class="w-6 h-6"></i>
             <h1 class="text-xl font-bold tracking-wide">Reservdelsplock</h1>
@@ -62,7 +66,9 @@
         </div>
 
         <div id="step-parts" class="hidden flex-col gap-4">
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0">
+            
+            <!-- Aktivt Fordon info (Döljs vid sökning) -->
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0 compact-hide">
                 <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktiv Arbetsorder / Fordon</div>
                 <div class="flex justify-between items-center">
                     <div id="current-order-display" class="text-2xl font-bold text-slate-800">AO-25-1475</div>
@@ -72,7 +78,7 @@
                 </div>
             </div>
 
-            <button onclick="window.toggleInputSection()" class="flex justify-between items-center bg-blue-50 p-3 rounded-xl shadow-sm border border-blue-100 shrink-0 hover:bg-blue-100 transition-colors w-full">
+            <button onclick="window.toggleInputSection()" class="flex justify-between items-center bg-blue-50 p-3 rounded-xl shadow-sm border border-blue-100 shrink-0 hover:bg-blue-100 transition-colors w-full compact-hide">
                 <span class="font-bold text-blue-900 flex items-center gap-2">
                     <i data-lucide="plus-circle" class="w-5 h-5"></i> Skanna & Lägg till artiklar
                 </span>
@@ -80,9 +86,9 @@
             </button>
 
             <!-- LÄGG TILL DEL SEKTIONEN -->
-            <div id="add-part-section" class="flex flex-col gap-4 shrink-0 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
-                <!-- Skanner-knappar -->
-                <div class="grid grid-cols-2 gap-3">
+            <div id="add-part-section" class="flex flex-col gap-4 shrink-0 p-4 bg-white rounded-xl border border-slate-200 shadow-sm transition-all duration-300">
+                <!-- Skanner-knappar (Döljs vid sökning) -->
+                <div class="grid grid-cols-2 gap-3 compact-hide">
                     <button onclick="window.startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
                         <i data-lucide="qr-code" class="w-8 h-8"></i>
                         <span class="font-bold text-sm text-center leading-tight">Skanna<br>QR/Streckkod</span>
@@ -94,7 +100,7 @@
                     <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="window.processOCR(event)">
                 </div>
                 
-                <div class="border-t border-slate-100 my-1"></div>
+                <div class="border-t border-slate-100 my-1 compact-hide"></div>
 
                 <!-- Manuell sökning / Inmatning staplad vertikalt -->
                 <div class="flex flex-col gap-3">
@@ -104,7 +110,7 @@
                         <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm"></div>
                     </div>
                     
-                    <!-- LAGER-Filter (Snabba knappar genereras dynamiskt) -->
+                    <!-- LAGER-Filter -->
                     <div id="location-filter-container" class="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full pb-1">
                         <span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Lager:</span>
                         <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm shrink-0">Alla</button>
@@ -118,7 +124,7 @@
                 </div>
             </div>
 
-            <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[150px] z-10">
+            <div class="flex-grow bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col min-h-[150px] z-10 compact-hide">
                 <div class="bg-slate-50 p-3 border-b border-slate-200 text-sm font-semibold text-slate-600 flex justify-between items-center">
                     <span>Plockade artiklar</span>
                     <span id="part-count-badge" class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs hidden">0 st</span>
@@ -126,7 +132,7 @@
                 <div id="parts-list" class="overflow-y-auto p-2 flex-grow"></div>
             </div>
 
-            <label class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer shrink-0 hover:bg-slate-50 transition-colors">
+            <label class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer shrink-0 hover:bg-slate-50 transition-colors compact-hide">
                 <div class="flex flex-col">
                     <span class="font-bold text-slate-800 text-lg">Ordern är färdig</span>
                     <span class="text-xs text-slate-500">Markera om inga fler delar ska plockas</span>
@@ -134,7 +140,7 @@
                 <input type="checkbox" id="order-finished-cb" onchange="window.markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
             </label>
 
-            <button onclick="window.finishOrder()" id="finish-btn" class="w-full bg-blue-800 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity shrink-0 flex items-center justify-center gap-2">
+            <button onclick="window.finishOrder()" id="finish-btn" class="w-full bg-blue-800 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity shrink-0 flex items-center justify-center gap-2 compact-hide">
                 <i data-lucide="save" class="w-6 h-6"></i>
                 Spara Arbetsorder
             </button>
@@ -172,7 +178,7 @@
                     </div>
                     
                     <div class="text-sm text-slate-500 italic">
-                        När du laddat ner den nya .json-filen, ladda upp den på GitHub i samma mapp som dina appar. (Observera att artikellistan nu även sparar städer i bakgrunden för lager-söket!)
+                        När du laddat ner den nya .json-filen, ladda upp den på GitHub i samma mapp som dina appar. Databasen tittar automatiskt på artiklarnas lagersaldo för att bygga filtren!
                     </div>
                 </div>
                 
@@ -266,8 +272,7 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Säker, global funktion för notiser.
-        function showToast(msg, type = 'info') {
+        window.showToast = function(msg, type = 'info') {
             const toast = document.getElementById('toast');
             document.getElementById('toast-msg').textContent = msg;
             if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
@@ -275,8 +280,7 @@
             else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
             toast.classList.remove('translate-y-[150%]');
             setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
-        }
-        window.showToast = showToast;
+        };
 
         const firebaseConfig = {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
@@ -371,10 +375,10 @@
 
             let locations = new Set();
             data.forEach(item => {
-                if(item.b && item.b.trim() !== '') {
-                    if(item.b.length <= 25) {
-                        locations.add(item.b.trim().toUpperCase());
-                    }
+                if(Array.isArray(item.b)) {
+                    item.b.forEach(loc => {
+                        if(loc.length <= 25) locations.add(loc.toUpperCase());
+                    });
                 }
             });
 
@@ -413,22 +417,37 @@
         const partInput = document.getElementById('manual-part-input');
         const dropdown = document.getElementById('autocomplete-dropdown');
 
+        // Kompakt Sökläge: Lyssna på focus och blur
+        partInput.addEventListener('focus', () => {
+            document.body.classList.add('search-mode-active');
+        });
+
+        partInput.addEventListener('blur', () => {
+            // Liten fördröjning så att man hinner klicka på resultat i listan
+            setTimeout(() => {
+                document.body.classList.remove('search-mode-active');
+            }, 200);
+        });
+
         partInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
             dropdown.innerHTML = '';
-            if (val.length < 2 || articleDatabase.length === 0) { dropdown.classList.add('hidden'); return; }
+            
+            if (val.length < 2 || articleDatabase.length === 0) {
+                dropdown.classList.add('hidden'); return;
+            }
 
             const matches = articleDatabase.filter(item => {
-                const desc = (item.b || "").toLowerCase();
+                let locs = Array.isArray(item.b) ? item.b.map(l => l.toLowerCase()) : [];
                 
                 if (currentLocFilter !== 'ALLA') {
                     const filterLower = currentLocFilter.toLowerCase();
-                    const isGeneric = !window.knownLocations.some(loc => desc === loc || desc.includes(loc));
-                    const matchesLocation = desc === filterLower || desc.includes(filterLower);
+                    const isGeneric = locs.length === 0;
+                    const matchesLocation = locs.includes(filterLower);
                     if (!isGeneric && !matchesLocation) return false;
                 }
 
-                const searchStr = item.a.toLowerCase() + " " + item.t.toLowerCase() + " " + (item.m || "").toLowerCase() + " " + desc;
+                const searchStr = item.a.toLowerCase() + " " + item.t.toLowerCase() + " " + (item.m || "").toLowerCase();
                 const searchTerms = val.split(' ').filter(t => t.length > 0);
                 return searchTerms.every(term => searchStr.includes(term));
 
@@ -439,16 +458,18 @@
                 matches.forEach(match => {
                     const div = document.createElement('div');
                     div.className = 'p-3 hover:bg-blue-50 cursor-pointer flex flex-col gap-1 transition-colors';
-                    const ortTag = match.b ? `<span class="ml-1 text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">${match.b}</span>` : '';
+                    const ortTag = (Array.isArray(match.b) && match.b.length > 0) 
+                        ? match.b.map(l => `<span class="ml-1 text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">${l}</span>`).join('') 
+                        : '';
                     div.innerHTML = `
-                        <div class="font-bold text-slate-800 leading-tight">${match.a} ${ortTag}</div>
+                        <div class="font-bold text-slate-800 leading-tight">${match.a} <div class="inline-flex gap-1 flex-wrap mt-0.5">${ortTag}</div></div>
                         <div class="text-xs text-slate-500 leading-tight">${match.t} ${match.m ? `<span class="italic text-blue-400">(${match.m})</span>` : ''}</div>
                     `;
                     div.onclick = () => {
                         window.addPartToList(match.a);
                         partInput.value = '';
                         dropdown.classList.add('hidden');
-                        partInput.focus();
+                        partInput.blur(); // Stänger det kompakta läget
                     };
                     dropdown.appendChild(div);
                 });
@@ -598,9 +619,9 @@
         window.markUnsaved = function() { hasUnsavedChanges = true; };
 
         async function loadOrder(orderNo) {
-            if (!currentUser) { showToast("Väntar på systemanslutning...", "error"); return; }
+            if (!currentUser) { window.showToast("Väntar på systemanslutning...", "error"); return; }
             if (!isOrdersLoaded) {
-                showToast("Synkroniserar databas, vänta ett ögonblick...", "info");
+                window.showToast("Synkroniserar databas, vänta ett ögonblick...", "info");
                 setTimeout(() => loadOrder(orderNo), 800);
                 return;
             }
@@ -612,13 +633,13 @@
                 currentOrderNo = ongoingOrder.orderId;
                 scannedParts = ongoingOrder.parts || [];
                 orderFinishedCb.checked = false;
-                showToast(`Hittade pågående plockning för ${orderNo}`, 'success');
+                window.showToast(`Hittade pågående plockning för ${orderNo}`, 'success');
             } else {
                 currentOrderDocId = `${orderNo}-${Date.now()}`;
                 currentOrderNo = orderNo;
                 scannedParts = [];
                 orderFinishedCb.checked = false;
-                showToast(`Ny plockning startad för ${orderNo}`, 'success');
+                window.showToast(`Ny plockning startad för ${orderNo}`, 'success');
             }
 
             if (!isInputSectionVisible) window.toggleInputSection();
@@ -628,7 +649,7 @@
 
         window.setManualOrder = function() {
             const val = orderInput.value;
-            if (val.trim() === '') { showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
+            if (val.trim() === '') { window.showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
             let formattedOrder = val.trim().toUpperCase();
             const cleanedForAo = formattedOrder.replace(/[^A-Z0-9]/g, '');
             if (cleanedForAo.length >= 5 && /^(?:AO)?\d+$/.test(cleanedForAo)) {
@@ -654,10 +675,10 @@
             const existingPartIndex = scannedParts.findIndex(p => p.partNo === cleanedPartNo);
             if (existingPartIndex >= 0) {
                 scannedParts[existingPartIndex].qty += 1;
-                showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
+                window.showToast(`Ökade antal för ${cleanedPartNo}`, 'success');
             } else {
                 scannedParts.unshift({ partNo: cleanedPartNo, qty: 1 });
-                showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
+                window.showToast(`Lade till reservdel: ${cleanedPartNo}`, 'success');
             }
             window.markUnsaved(); if(navigator.vibrate) navigator.vibrate(50); updateUI();
         };
@@ -665,7 +686,7 @@
         window.addManualPart = function() {
             const val = partInput.value;
             if (val.trim() === '') return;
-            window.addPartToList(val); partInput.value = ''; dropdown.classList.add('hidden'); partInput.focus();
+            window.addPartToList(val); partInput.value = ''; dropdown.classList.add('hidden'); partInput.blur();
         };
 
         partInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.addManualPart(); });
@@ -706,7 +727,7 @@
 
         window.finishOrder = async function() {
             if (scannedParts.length === 0 && !orderFinishedCb.checked) return;
-            if (!currentUser) { showToast('Ansluter till molnet...', 'error'); return; }
+            if (!currentUser) { window.showToast('Ansluter till molnet...', 'error'); return; }
 
             try {
                 const originalText = finishBtn.innerHTML;
@@ -725,12 +746,12 @@
                 }, { merge: true });
 
                 hasUnsavedChanges = false;
-                showToast('Arbetsorder sparad i systemet!', 'success');
+                window.showToast('Arbetsorder sparad i systemet!', 'success');
                 setTimeout(() => {
                     clearOrder(); finishBtn.innerHTML = originalText; finishBtn.disabled = false; lucide.createIcons();
                 }, 1000);
             } catch (error) {
-                showToast('Ett fel uppstod vid sparandet.', 'error');
+                window.showToast('Ett fel uppstod vid sparandet.', 'error');
                 finishBtn.innerHTML = '<i data-lucide="save" class="w-6 h-6"></i> Spara Arbetsorder'; finishBtn.disabled = false; lucide.createIcons();
             }
         };
@@ -845,7 +866,7 @@
             const file = e.target.files[0];
             if(!file) return;
             
-            showToast("Läser in excelfil...", "info");
+            window.showToast("Läser in excelfil...", "info");
             
             Papa.parse(file, {
                 skipEmptyLines: 'greedy',
@@ -855,13 +876,11 @@
                     let fileType = null;
                     let warehouseRowIndex = -1;
                     
-                    // Leta reda på rubrikraden (Rad 3 i ditt fall, index 2)
                     for (let i = 0; i < Math.min(10, data.length); i++) {
                         if (data[i].some(col => col && col.trim() === "Art.nr.")) { 
                             headerIndex = i; 
                             fileType = 'articles'; 
-                            // Lagernamnen förväntas finnas på raden precis ovanför (Rad 2, index 1)
-                            warehouseRowIndex = i - 1;
+                            warehouseRowIndex = i - 1; 
                             break; 
                         }
                         if (data[i].some(col => col && col.trim() === "Reg.nr")) { 
@@ -871,7 +890,7 @@
                         }
                     }
 
-                    if (headerIndex === -1) { showToast("Kunde inte känna igen filen.", "error"); return; }
+                    if (headerIndex === -1) { window.showToast("Kunde inte känna igen filen.", "error"); return; }
 
                     const headers = data[headerIndex];
                     const items = [];
@@ -882,17 +901,17 @@
                         const titelIdx = headers.indexOf("Titel");
                         const tillverkareIdx = headers.indexOf("Tillverkare");
                         
-                        // Hitta alla "Lagersaldo"-kolumner och deras motsvarande lager från raden ovanför
                         const warehouseColumns = [];
                         const warehouseNames = data[warehouseRowIndex];
                         
                         if (warehouseRowIndex >= 0 && warehouseNames) {
                             headers.forEach((header, index) => {
                                 if (header && header.trim() === "Lagersaldo") {
-                                    const warehouseName = warehouseNames[index] ? warehouseNames[index].trim() : "Okänt Lager";
-                                    // Ta bort "Smålandslogistik " etc. för att korta ner knappnamnen om man vill
-                                    let cleanName = warehouseName.replace("Smålandslogistik ", "");
-                                    warehouseColumns.push({ index: index, name: cleanName });
+                                    const wName = warehouseNames[index] ? warehouseNames[index].trim() : "";
+                                    if (wName !== "") {
+                                        let cleanName = wName.replace(/Smålandslogistik/ig, "").replace(/lager/ig, "").replace(/\s+/g, " ").trim();
+                                        warehouseColumns.push({ index: index, name: cleanName });
+                                    }
                                 }
                             });
                         }
@@ -903,20 +922,15 @@
                             const t = row[titelIdx] ? row[titelIdx].trim() : "";
                             const m = row[tillverkareIdx] ? row[tillverkareIdx].trim() : "";
                             
-                            // Bygg en sträng med alla lager där artikeln har ett lagersaldo
                             let locationsArray = [];
                             warehouseColumns.forEach(col => {
                                 const saldo = row[col.index];
-                                // Om saldot innehåller en siffra (oavsett 0, pos eller neg), så finns artikeln på detta lager
                                 if (saldo && /[0-9]/.test(saldo)) {
                                     locationsArray.push(col.name);
                                 }
                             });
-                            
-                            // Skapa en komma-separerad sträng med orterna (t.ex. "Växjö, Nybro")
-                            const b = locationsArray.join(", ");
 
-                            if (a !== "") items.push({ a, t, m, b });
+                            if (a !== "") items.push({ a, t, m, b: locationsArray });
                         }
                         fileNameToSave = "artiklar.json";
                     } 
@@ -943,10 +957,10 @@
                     document.body.removeChild(aLink);
                     URL.revokeObjectURL(url);
 
-                    showToast(`Konverterade ${items.length} ${fileType === 'vehicles' ? 'fordon' : 'artiklar'}!`, "success");
+                    window.showToast(`Konverterade ${items.length} ${fileType === 'vehicles' ? 'fordon' : 'artiklar'}!`, "success");
                     e.target.value = '';
                 },
-                error: function(err) { showToast("Kunde inte läsa filen.", "error"); }
+                error: function(err) { window.showToast("Kunde inte läsa filen.", "error"); }
             });
         };
 
@@ -958,20 +972,20 @@
 
         window.confirmArchive = async function() {
             if (!orderToArchive || !currentUser) return;
-            const idToArchive = orderToArchive; window.closeArchiveModal(); showToast('Arkiverar...', 'info');
+            const idToArchive = orderToArchive; window.closeArchiveModal(); window.showToast('Arkiverar...', 'info');
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', idToArchive), { isArchived: true }, { merge: true });
-                showToast('Ordern har arkiverats!', 'success');
-            } catch (error) { showToast('Kunde inte arkivera ordern.', 'error'); }
+                window.showToast('Ordern har arkiverats!', 'success');
+            } catch (error) { window.showToast('Kunde inte arkivera ordern.', 'error'); }
         };
 
         window.restoreOrder = async function(docId) {
             if (!currentUser) return;
-            showToast('Återställer order...', 'info');
+            window.showToast('Återställer order...', 'info');
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', docId), { isArchived: false }, { merge: true });
-                showToast('Ordern har flyttats till Aktiva!', 'success');
-            } catch (error) { showToast('Kunde inte återställa ordern.', 'error'); }
+                window.showToast('Ordern har flyttats till Aktiva!', 'success');
+            } catch (error) { window.showToast('Kunde inte återställa ordern.', 'error'); }
         };
 
         window.closeArchiveModal = function() { archiveModal.classList.add('hidden'); archiveModal.classList.remove('flex'); orderToArchive = null; };
@@ -983,7 +997,7 @@
             uiMain.classList.add('hidden'); uiScanner.classList.remove('hidden'); uiScanner.classList.add('flex');
             initScannerIfNeeded();
             html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, onScanSuccess, () => {})
-                .then(() => { isScanning = true; }).catch(err => { window.stopScanning(); showToast('Kunde inte starta kameran.', 'error'); });
+                .then(() => { isScanning = true; }).catch(err => { window.stopScanning(); window.showToast('Kunde inte starta kameran.', 'error'); });
         };
 
         window.stopScanning = function() {
@@ -1028,10 +1042,10 @@
                 const worker = await Tesseract.createWorker('eng'); const ret = await worker.recognize(file); await worker.terminate();
                 const text = ret.data.text; const rawMatches = text.match(/\b\d{2,25}\b/g) || [];
                 let uniqueMatches = [...new Set(rawMatches)]; uniqueMatches.sort((a, b) => b.length - a.length);
-                if (uniqueMatches.length === 0) showToast("Hittade inga tydliga siffror i bilden.", "error");
+                if (uniqueMatches.length === 0) window.showToast("Hittade inga tydliga siffror i bilden.", "error");
                 else if (uniqueMatches.length === 1) window.addPartToList(uniqueMatches[0]);
                 else showOcrSelection(uniqueMatches);
-            } catch(err) { showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
+            } catch(err) { window.showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
             } finally { document.getElementById('ocr-loading').classList.add('hidden'); document.getElementById('ocr-loading').classList.remove('flex'); event.target.value = ''; }
         };
 

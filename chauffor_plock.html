@@ -14,15 +14,11 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <style>
         body { touch-action: pan-y; -webkit-tap-highlight-color: transparent; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        #reader video { object-fit: cover; border-radius: 0.5rem; }
-        #reader { border: none !important; }
 
         /* CSS för att hantera Kompakt Sökläge smidigt */
         .compact-hide { 
@@ -40,7 +36,6 @@
         }
     </style>
 </head>
-<!-- Native Scroll: Borttaget overflow-hidden och satt min-h-screen istället -->
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
     <!-- Header -->
@@ -82,26 +77,11 @@
                 </div>
             </div>
 
-            <!-- Manuell inmatning & Skanning -->
+            <!-- Manuell inmatning -->
             <div class="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col gap-3 transition-all duration-300">
                 <label class="text-sm font-bold text-indigo-900 flex items-center gap-2 compact-hide">
                     <i data-lucide="plus-circle" class="w-5 h-5"></i> Lägg till reservdel
                 </label>
-                
-                <!-- Skanner-knappar -->
-                <div class="grid grid-cols-2 gap-3 mb-1 compact-hide">
-                    <button onclick="window.startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm transition-colors">
-                        <i data-lucide="qr-code" class="w-8 h-8"></i>
-                        <span class="font-bold text-sm text-center leading-tight">Skanna<br>QR/Streckkod</span>
-                    </button>
-                    <button onclick="document.getElementById('ocr-input').click()" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow-sm transition-colors">
-                        <i data-lucide="scan-text" class="w-8 h-8"></i>
-                        <span class="font-bold text-sm text-center leading-tight">Läs Text<br>(Fota siffror)</span>
-                    </button>
-                    <input type="file" accept="image/*" capture="environment" id="ocr-input" class="hidden" onchange="window.processOCR(event)">
-                </div>
-
-                <div class="border-t border-indigo-200/50 my-1 compact-hide"></div>
 
                 <div class="flex flex-col gap-3">
                     <!-- Sökfältet -->
@@ -125,7 +105,7 @@
                 </div>
             </div>
 
-            <!-- Listan och nedre knappar (GÖMS EJ LÄNGRE) -->
+            <!-- Listan och nedre knappar -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col z-10">
                 <div class="bg-slate-50 p-3 border-b border-slate-200 text-sm font-semibold text-slate-600 flex justify-between items-center rounded-t-xl">
                     <span>Plockade artiklar</span>
@@ -149,32 +129,7 @@
         </div>
     </main>
 
-    <!-- Modaler (Satt till FIXED istället för absolute för att följa med vid scroll) -->
-    <div id="scanner-ui" class="hidden fixed inset-0 bg-black z-50 flex flex-col">
-        <div class="flex justify-between items-center p-4 bg-black/80 text-white">
-            <h3 id="scanner-title" class="text-lg font-semibold">Skannar...</h3>
-            <button onclick="window.stopScanning()" class="bg-red-600 hover:bg-red-700 rounded-lg px-4 py-2 font-medium flex items-center gap-2"><i data-lucide="x" class="w-5 h-5"></i> Avbryt</button>
-        </div>
-        <div class="flex-grow flex items-center justify-center relative overflow-hidden bg-black"><div id="reader" class="w-full max-w-md"></div></div>
-        <div class="p-6 bg-black/80 text-center text-slate-300 text-sm">Rikta kameran mot streckkoden eller QR-koden. Den läses av automatiskt.</div>
-    </div>
-
-    <div id="ocr-select-modal" class="hidden fixed inset-0 bg-slate-900/80 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[80vh]">
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-indigo-50 rounded-t-2xl">
-                <h3 class="font-bold text-indigo-900 text-lg flex items-center gap-2"><i data-lucide="scan-text" class="w-5 h-5"></i> Välj artikelnummer</h3>
-                <button onclick="window.closeOcrModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-lg"><i data-lucide="x" class="w-6 h-6"></i></button>
-            </div>
-            <div class="p-4 overflow-y-auto flex-grow">
-                <p class="text-sm text-slate-500 mb-4 font-medium">Vi hittade dessa nummer i bilden. Klicka på det som är rätt artikelnummer:</p>
-                <div id="ocr-results-container" class="flex flex-col gap-3"></div>
-            </div>
-            <div class="p-4 border-t border-slate-100">
-                <button onclick="window.closeOcrModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl">Avbryt</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Modaler -->
     <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all">
             <div class="flex items-center gap-3 text-red-600 mb-4"><div class="bg-red-100 p-2 rounded-full text-red-600"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3></div>
@@ -198,11 +153,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <div id="ocr-loading" class="hidden fixed inset-0 bg-slate-900/90 z-[60] flex flex-col items-center justify-center text-white backdrop-blur-sm">
-        <i data-lucide="loader-2" class="w-16 h-16 animate-spin text-indigo-400 mb-6"></i>
-        <h3 class="text-2xl font-bold mb-2">Analyserar bild...</h3>
     </div>
 
     <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 translate-y-[150%] z-50 flex items-center gap-2 whitespace-nowrap">
@@ -427,91 +377,6 @@
             if(!partInput.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.add('hidden');
             if(!orderInput.contains(e.target) && !orderDropdown.contains(e.target)) orderDropdown.classList.add('hidden');
         });
-
-        // --- SKANNER OCH OCR FUNKTIONER ---
-        let html5QrcodeScanner = null;
-        let scanMode = null; 
-        let isScanning = false;
-
-        function initScannerIfNeeded() { if (!html5QrcodeScanner) html5QrcodeScanner = new Html5Qrcode("reader"); }
-        
-        window.startScanning = function(mode) {
-            scanMode = mode; 
-            document.getElementById('scanner-title').textContent = mode === 'ORDER' ? 'Skanna Arbetsorder QR' : 'Skanna Reservdel';
-            document.getElementById('main-ui').classList.add('hidden'); 
-            document.getElementById('scanner-ui').classList.remove('hidden'); 
-            document.getElementById('scanner-ui').classList.add('flex');
-            initScannerIfNeeded();
-            html5QrcodeScanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 }, window.onScanSuccess, () => {})
-                .then(() => { isScanning = true; }).catch(err => { window.stopScanning(); window.showToast('Kunde inte starta kameran.', 'error'); });
-        };
-
-        window.stopScanning = function() {
-            if (isScanning && html5QrcodeScanner) {
-                html5QrcodeScanner.stop().then(() => { isScanning = false; window.closeScannerUI(); }).catch(err => { window.closeScannerUI(); });
-            } else { window.closeScannerUI(); }
-        };
-        
-        window.closeScannerUI = function() { 
-            document.getElementById('scanner-ui').classList.add('hidden'); 
-            document.getElementById('scanner-ui').classList.remove('flex'); 
-            document.getElementById('main-ui').classList.remove('hidden'); 
-        };
-
-        window.onScanSuccess = function(decodedText) {
-            if (scanMode === 'ORDER') {
-                if(navigator.vibrate) navigator.vibrate(100);
-                window.stopScanning();
-                let val = decodedText.trim().toUpperCase();
-                const cleanedForAo = val.replace(/[^A-Z0-9]/g, '');
-                if (cleanedForAo.length >= 5 && /^(?:AO)?\d+$/.test(cleanedForAo)) {
-                    const match = cleanedForAo.match(/^(?:AO)?(\d{2})(\d+)$/);
-                    if (match) val = `AO-${match[1]}-${match[2]}`;
-                }
-                loadOrder(val);
-            } else if (scanMode === 'PART') { 
-                window.addPartToList(decodedText); 
-                window.stopScanning(); 
-            }
-        };
-
-        window.showOcrSelection = function(matches) {
-            const container = document.getElementById('ocr-results-container'); container.innerHTML = ''; 
-            matches.forEach(match => {
-                const btn = document.createElement('button');
-                btn.className = "w-full text-left bg-white border-2 border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 p-4 rounded-xl text-xl font-bold text-slate-800 flex justify-between items-center";
-                btn.innerHTML = `<span>${match}</span> <i data-lucide="chevron-right" class="w-5 h-5 text-indigo-400"></i>`;
-                btn.onclick = () => { window.addPartToList(match); window.closeOcrModal(); }; container.appendChild(btn);
-            });
-            lucide.createIcons(); 
-            document.getElementById('ocr-select-modal').classList.remove('hidden'); 
-            document.getElementById('ocr-select-modal').classList.add('flex');
-        };
-        
-        window.closeOcrModal = function() { 
-            document.getElementById('ocr-select-modal').classList.add('hidden'); 
-            document.getElementById('ocr-select-modal').classList.remove('flex'); 
-        };
-
-        window.processOCR = async function(event) {
-            const file = event.target.files[0]; if (!file) return;
-            document.getElementById('ocr-loading').classList.remove('hidden'); 
-            document.getElementById('ocr-loading').classList.add('flex'); 
-            lucide.createIcons();
-            try {
-                const worker = await Tesseract.createWorker('eng'); const ret = await worker.recognize(file); await worker.terminate();
-                const text = ret.data.text; const rawMatches = text.match(/\b\d{2,25}\b/g) || [];
-                let uniqueMatches = [...new Set(rawMatches)]; uniqueMatches.sort((a, b) => b.length - a.length);
-                if (uniqueMatches.length === 0) window.showToast("Hittade inga tydliga siffror i bilden.", "error");
-                else if (uniqueMatches.length === 1) window.addPartToList(uniqueMatches[0]);
-                else window.showOcrSelection(uniqueMatches);
-            } catch(err) { window.showToast("Ett fel uppstod när bilden skulle tolkas.", "error");
-            } finally { 
-                document.getElementById('ocr-loading').classList.add('hidden'); 
-                document.getElementById('ocr-loading').classList.remove('flex'); 
-                event.target.value = ''; 
-            }
-        };
 
         // --- STATE ---
         let currentOrderNo = null;

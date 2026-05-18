@@ -34,11 +34,12 @@
             padding: 0 !important; 
             border: none !important; 
         }
+        /* Tvinga sökfältet till toppen när sökläget är aktivt på förstasidan */
+        body.search-mode-active #step-order { justify-content: flex-start !important; margin-top: 0 !important; padding-top: 1rem; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Header -->
     <header class="bg-indigo-600 text-white p-4 shadow-md z-50 flex justify-between items-center sticky top-0 compact-hide">
         <div class="flex items-center gap-2">
             <i data-lucide="truck" class="w-6 h-6"></i>
@@ -49,8 +50,8 @@
 
     <main id="main-ui" class="flex-grow p-4 pb-32 flex flex-col gap-4">
         
-        <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6 mt-12">
-            <div class="text-center space-y-2 mb-2">
+        <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6 mt-12 transition-all duration-300">
+            <div class="text-center space-y-2 mb-2 compact-hide">
                 <h2 class="text-3xl font-bold text-slate-700">Registrera Delar</h2>
                 <p class="text-slate-500 font-medium">Ange Regnr eller Internnr på ditt fordon.</p>
             </div>
@@ -59,7 +60,7 @@
                     <input type="text" id="manual-order-input" placeholder="T.ex. OEJ634 eller DM10" class="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-5 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 uppercase text-lg font-bold text-center tracking-wider transition-all shadow-sm">
                     <div id="order-autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm text-left"></div>
                 </div>
-                <button onclick="window.setManualOrder()" class="w-full bg-indigo-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-md flex items-center justify-center gap-2">
+                <button onclick="window.setManualOrder()" class="w-full bg-indigo-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-md flex items-center justify-center gap-2 compact-hide">
                     <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
                     Öppna / Skapa
                 </button>
@@ -68,7 +69,6 @@
 
         <div id="step-parts" class="hidden flex-col gap-4">
             
-            <!-- Aktivt Fordon info -->
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 compact-hide">
                 <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktivt Fordon</div>
                 <div class="flex justify-between items-center">
@@ -77,27 +77,23 @@
                 </div>
             </div>
 
-            <!-- Manuell inmatning -->
             <div class="bg-indigo-50 p-4 rounded-xl shadow-sm border border-indigo-100 flex flex-col gap-3 transition-all duration-300">
                 <label class="text-sm font-bold text-indigo-900 flex items-center gap-2 compact-hide">
                     <i data-lucide="plus-circle" class="w-5 h-5"></i> Lägg till reservdel
                 </label>
 
                 <div class="flex flex-col gap-3">
-                    <!-- Sökfältet -->
                     <div class="relative w-full">
                         <input type="text" id="manual-part-input" placeholder="Sök namn, artikelnr..." class="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-4 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 uppercase text-lg font-bold text-center tracking-wider transition-all shadow-sm">
                         <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm text-left"></div>
                     </div>
                     
-                    <!-- Lager-Filter -->
                     <div id="location-filter-container" class="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full pb-1">
                         <span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Lager:</span>
                         <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-indigo-600 text-white transition-colors shadow-sm shrink-0">Alla</button>
                         <span class="text-xs text-slate-400 italic">Laddar lager...</span>
                     </div>
 
-                    <!-- Fullbredds-knapp -->
                     <button onclick="window.addManualPart()" class="w-full bg-indigo-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-md flex items-center justify-center gap-2 mt-1">
                         <i data-lucide="plus" class="w-5 h-5"></i>
                         Lägg till i listan
@@ -105,8 +101,7 @@
                 </div>
             </div>
 
-            <!-- Listan och nedre knappar -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col z-10">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col z-10 compact-hide">
                 <div class="bg-slate-50 p-3 border-b border-slate-200 text-sm font-semibold text-slate-600 flex justify-between items-center rounded-t-xl">
                     <span>Plockade artiklar</span>
                     <span id="part-count-badge" class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs hidden">0 st</span>
@@ -114,7 +109,7 @@
                 <div id="parts-list" class="p-2 flex flex-col"></div>
             </div>
 
-            <label class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors">
+            <label class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors compact-hide">
                 <div class="flex flex-col">
                     <span class="font-bold text-slate-800 text-lg">Plockningen är färdig</span>
                     <span class="text-xs text-slate-500">Kryssa i om du plockat klart allt</span>
@@ -122,14 +117,13 @@
                 <input type="checkbox" id="order-finished-cb" onchange="window.markUnsaved()" class="w-7 h-7 accent-green-600 rounded cursor-pointer">
             </label>
 
-            <button onclick="window.finishOrder()" id="finish-btn" class="w-full bg-indigo-600 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity flex items-center justify-center gap-2 hover:bg-indigo-700 active:bg-indigo-800">
+            <button onclick="window.finishOrder()" id="finish-btn" class="w-full bg-indigo-600 text-white rounded-xl p-4 text-lg font-bold shadow-md opacity-50 cursor-not-allowed transition-opacity flex items-center justify-center gap-2 hover:bg-indigo-700 active:bg-indigo-800 compact-hide">
                 <i data-lucide="save" class="w-6 h-6"></i>
                 Skicka in reservdelar
             </button>
         </div>
     </main>
 
-    <!-- Modaler -->
     <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all">
             <div class="flex items-center gap-3 text-red-600 mb-4"><div class="bg-red-100 p-2 rounded-full text-red-600"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3></div>
@@ -215,6 +209,17 @@
         const orderInput = document.getElementById('manual-order-input');
         const orderDropdown = document.getElementById('order-autocomplete-dropdown');
 
+        // Hantera Kompakt Sökläge för Fordonsinmatning
+        orderInput.addEventListener('focus', () => {
+            document.body.classList.add('search-mode-active');
+        });
+
+        orderInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                document.body.classList.remove('search-mode-active');
+            }, 200);
+        });
+
         orderInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
             orderDropdown.innerHTML = '';
@@ -239,6 +244,7 @@
                     div.onclick = () => {
                         orderInput.value = match.i ? match.i : match.r; 
                         orderDropdown.classList.add('hidden');
+                        orderInput.blur(); // Stäng sökläget
                         window.setManualOrder(); 
                     };
                     orderDropdown.appendChild(div);
@@ -295,7 +301,7 @@
                 activeBtn.classList.remove('bg-white', 'text-slate-600', 'border', 'border-slate-200');
                 activeBtn.classList.add('bg-indigo-600', 'text-white');
             }
-            partInput.dispatchEvent(new Event('input'));
+            partInput.dispatchEvent(new Event('input')); 
         };
 
         const partInput = document.getElementById('manual-part-input');
@@ -366,7 +372,7 @@
                         window.addPartToList(match.a);
                         partInput.value = '';
                         dropdown.classList.add('hidden');
-                        partInput.blur(); 
+                        partInput.blur(); // Stänger det kompakta läget
                     };
                     dropdown.appendChild(div);
                 });

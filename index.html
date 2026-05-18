@@ -27,12 +27,13 @@
         
         /* CSS för att hantera Kompakt Sökläge smidigt */
         .compact-hide { transition: all 0.3s ease-in-out; opacity: 1; max-height: 500px; overflow: hidden; }
-        body.search-mode-active .compact-hide { opacity: 0; max-height: 0; margin: 0; padding-top: 0; padding-bottom: 0; border: none; }
+        body.search-mode-active .compact-hide { opacity: 0 !important; max-height: 0 !important; margin: 0 !important; padding: 0 !important; border: none !important; }
+        /* Tvinga sökfältet till toppen när sökläget är aktivt på förstasidan */
+        body.search-mode-active #step-order { justify-content: flex-start !important; padding-top: 1rem; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans h-[100dvh] flex flex-col overflow-hidden">
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col">
 
-    <!-- Header (Döljs vid sökning) -->
     <header class="bg-blue-800 text-white p-4 shadow-md z-10 flex justify-between items-center shrink-0 compact-hide">
         <div class="flex items-center gap-2">
             <i data-lucide="wrench" class="w-6 h-6"></i>
@@ -45,11 +46,10 @@
         </button>
     </header>
 
-    <!-- HUVUDVY (Verkstad) -->
-    <main id="main-ui" class="flex-grow p-4 pb-32 overflow-y-auto flex flex-col gap-4">
+    <main id="main-ui" class="flex-grow p-4 pb-32 flex flex-col gap-4">
         
-        <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6">
-            <div class="text-center space-y-2 mb-2">
+        <div id="step-order" class="flex flex-col items-center justify-center flex-grow space-y-6 transition-all duration-300">
+            <div class="text-center space-y-2 mb-2 compact-hide">
                 <h2 class="text-3xl font-bold text-slate-700">Ny Plockning</h2>
                 <p class="text-slate-500 font-medium">Ange Regnr, Internnr eller AO.</p>
             </div>
@@ -58,7 +58,7 @@
                     <input type="text" id="manual-order-input" placeholder="T.ex. OEJ634, DM10 eller 251475" class="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-5 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 uppercase text-lg font-bold text-center tracking-wider transition-all shadow-sm">
                     <div id="order-autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm text-left"></div>
                 </div>
-                <button onclick="window.setManualOrder()" class="w-full bg-blue-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md flex items-center justify-center gap-2">
+                <button onclick="window.setManualOrder()" class="w-full bg-blue-600 text-white rounded-xl py-4 font-bold text-lg hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md flex items-center justify-center gap-2 compact-hide">
                     <i data-lucide="arrow-right-circle" class="w-5 h-5"></i>
                     Öppna / Skapa
                 </button>
@@ -67,7 +67,6 @@
 
         <div id="step-parts" class="hidden flex-col gap-4">
             
-            <!-- Aktivt Fordon info (Döljs vid sökning) -->
             <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200 shrink-0 compact-hide">
                 <div class="text-xs text-slate-400 uppercase font-semibold mb-1">Aktiv Arbetsorder / Fordon</div>
                 <div class="flex justify-between items-center">
@@ -85,9 +84,7 @@
                 <i data-lucide="chevron-up" id="input-toggle-icon" class="w-5 h-5 text-blue-700 transition-transform"></i>
             </button>
 
-            <!-- LÄGG TILL DEL SEKTIONEN -->
             <div id="add-part-section" class="flex flex-col gap-4 shrink-0 p-4 bg-white rounded-xl border border-slate-200 shadow-sm transition-all duration-300">
-                <!-- Skanner-knappar (Döljs vid sökning) -->
                 <div class="grid grid-cols-2 gap-3 compact-hide">
                     <button onclick="window.startScanning('PART')" class="bg-green-600 hover:bg-green-700 active:bg-green-800 text-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 shadow transition-colors">
                         <i data-lucide="qr-code" class="w-8 h-8"></i>
@@ -102,22 +99,18 @@
                 
                 <div class="border-t border-slate-100 my-1 compact-hide"></div>
 
-                <!-- Manuell sökning / Inmatning staplad vertikalt -->
                 <div class="flex flex-col gap-3">
-                    <!-- Sökfält -->
                     <div class="relative w-full">
                         <input type="text" id="manual-part-input" placeholder="Sök namn, artikelnr..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-4 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 uppercase text-lg font-bold text-center tracking-wider transition-all">
                         <div id="autocomplete-dropdown" class="hidden absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto z-[60] divide-y divide-slate-100 text-sm"></div>
                     </div>
                     
-                    <!-- LAGER-Filter -->
                     <div id="location-filter-container" class="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full pb-1">
                         <span class="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Lager:</span>
                         <button id="loc-btn-ALLA" onclick="window.setLocationFilter('ALLA')" class="loc-btn px-4 py-1.5 rounded-full text-sm font-bold bg-blue-600 text-white transition-colors shadow-sm shrink-0">Alla</button>
                         <span class="text-xs text-slate-400 italic">Laddar lager...</span>
                     </div>
 
-                    <!-- Lägg till knapp -->
                     <button onclick="window.addManualPart()" class="w-full bg-slate-800 text-white rounded-xl py-4 font-bold text-lg hover:bg-slate-700 active:bg-slate-900 transition-colors shadow-md flex items-center justify-center gap-2 mt-1">
                         <i data-lucide="plus-circle" class="w-5 h-5"></i> Lägg till i listan
                     </button>
@@ -147,7 +140,6 @@
         </div>
     </main>
 
-    <!-- ADMINVY (Kontoret) -->
     <main id="admin-ui" class="hidden flex-grow overflow-y-auto flex-col bg-slate-50 relative">
         <div class="sticky top-0 bg-slate-50 z-20 px-4 pt-4 border-b border-slate-200 shadow-sm">
             <div class="flex justify-between items-center mb-2">
@@ -164,7 +156,6 @@
         <div class="p-4 pb-12 flex flex-col gap-4">
             <div id="admin-orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
-            <!-- Artikelregister / CSV Konverterare -->
             <div id="admin-register-section" class="hidden flex-col gap-4">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2">
@@ -196,7 +187,6 @@
         </div>
     </main>
 
-    <!-- Modals (Scanner, Confirm, Unsaved, Archive) -->
     <div id="scanner-ui" class="hidden absolute inset-0 bg-black z-50 flex flex-col">
         <div class="flex justify-between items-center p-4 bg-black/80 text-white">
             <h3 id="scanner-title" class="text-lg font-semibold">Skannar...</h3>
@@ -266,13 +256,13 @@
         <i data-lucide="info" class="w-5 h-5"></i><span id="toast-msg">Meddelande</span>
     </div>
 
-    <!-- HUVUDSKRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        window.showToast = function(msg, type = 'info') {
+        // Säker, global funktion för notiser.
+        function showToast(msg, type = 'info') {
             const toast = document.getElementById('toast');
             document.getElementById('toast-msg').textContent = msg;
             if(type === 'success') toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
@@ -280,7 +270,8 @@
             else toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 z-50 flex items-center gap-2 whitespace-nowrap";
             toast.classList.remove('translate-y-[150%]');
             setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
-        };
+        }
+        window.showToast = showToast;
 
         const firebaseConfig = {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
@@ -336,6 +327,17 @@
         const orderInput = document.getElementById('manual-order-input');
         const orderDropdown = document.getElementById('order-autocomplete-dropdown');
 
+        // Hantera Kompakt Sökläge för Fordonsinmatning
+        orderInput.addEventListener('focus', () => {
+            document.body.classList.add('search-mode-active');
+        });
+
+        orderInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                document.body.classList.remove('search-mode-active');
+            }, 200);
+        });
+
         orderInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
             orderDropdown.innerHTML = '';
@@ -360,6 +362,7 @@
                     div.onclick = () => {
                         orderInput.value = match.i ? match.i : match.r; 
                         orderDropdown.classList.add('hidden');
+                        orderInput.blur(); // Stäng sökläget
                         window.setManualOrder(); 
                     };
                     orderDropdown.appendChild(div);
@@ -378,6 +381,11 @@
                 if(Array.isArray(item.b)) {
                     item.b.forEach(loc => {
                         if(loc.length <= 25) locations.add(loc.toUpperCase());
+                    });
+                } else if (typeof item.b === 'string' && item.b.trim() !== '') {
+                    item.b.split(',').forEach(loc => {
+                        const cleanLoc = loc.trim();
+                        if(cleanLoc.length > 0 && cleanLoc.length <= 25) locations.add(cleanLoc.toUpperCase());
                     });
                 }
             });
@@ -423,7 +431,6 @@
         });
 
         partInput.addEventListener('blur', () => {
-            // Liten fördröjning så att man hinner klicka på resultat i listan
             setTimeout(() => {
                 document.body.classList.remove('search-mode-active');
             }, 200);
@@ -438,7 +445,12 @@
             }
 
             const matches = articleDatabase.filter(item => {
-                let locs = Array.isArray(item.b) ? item.b.map(l => l.toLowerCase()) : [];
+                let locs = [];
+                if (Array.isArray(item.b)) {
+                    locs = item.b.map(l => l.toLowerCase());
+                } else if (typeof item.b === 'string' && item.b.trim() !== '') {
+                    locs = item.b.split(',').map(l => l.trim().toLowerCase());
+                }
                 
                 if (currentLocFilter !== 'ALLA') {
                     const filterLower = currentLocFilter.toLowerCase();

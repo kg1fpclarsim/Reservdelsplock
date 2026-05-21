@@ -149,6 +149,22 @@
         </div>
     </div>
 
+    <!-- NY MODAL FÖR OKÄNT FORDON / CHAUFFÖRSNAMN -->
+    <div id="driver-name-modal" class="hidden fixed inset-0 bg-slate-900/60 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all border-t-8 border-indigo-500">
+            <div class="flex items-center gap-3 text-indigo-600 mb-3">
+                <div class="bg-indigo-100 p-2 rounded-full text-indigo-600"><i data-lucide="user" class="w-6 h-6"></i></div>
+                <h3 class="text-xl font-bold text-slate-800">Okänt fordon</h3>
+            </div>
+            <p class="text-slate-600 mb-4 text-sm font-medium">Fordonet finns inte i registret. Vänligen ange ditt för- och efternamn för att fortsätta plockningen.</p>
+            <div class="flex flex-col gap-3">
+                <input type="text" id="driver-name-input" placeholder="Ditt namn..." class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 text-lg font-bold transition-all shadow-sm">
+                <button onclick="window.confirmDriverName()" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-3 rounded-xl transition-colors shadow-sm text-lg mt-2">Fortsätt plocka</button>
+                <button onclick="window.closeDriverNameModal()" class="w-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">Avbryt</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl transition-transform duration-300 translate-y-[150%] z-50 flex items-center gap-2 whitespace-nowrap">
         <i data-lucide="info" class="w-5 h-5"></i><span id="toast-msg">Meddelande</span>
     </div>
@@ -389,6 +405,8 @@
         let scannedParts = []; 
         let itemToDelete = null; 
         let hasUnsavedChanges = false;
+        let driverNameForUnknownVehicle = null; // Håller koll på namnet för okända bilar
+        let pendingUnknownOrder = null; // Tillfälligt sparad order i väntan på namn
 
         const uiMain = document.getElementById('main-ui');
         const uiStepOrder = document.getElementById('step-order');
@@ -414,8 +432,18 @@
                 uiStepOrder.classList.add('hidden'); uiStepOrder.classList.remove('flex');
                 uiStepParts.classList.remove('hidden'); uiStepParts.classList.add('flex');
                 
-                orderDisplay.textContent = currentOrderNo;
-                headerBadge.textContent = currentOrderNo;
+                // Slå upp om vi har både Internnr och Regnr för att visa en tydligare titel
+                let displayTitle = currentOrderNo;
+                const matchedVehicle = vehicleDatabase.find(v => 
+                    (v.i && v.i.toUpperCase() === currentOrderNo.toUpperCase()) || 
+                    (v.r && v.r.toUpperCase() === currentOrderNo.toUpperCase())
+                );
+                if (matchedVehicle && matchedVehicle.i && matchedVehicle.r) {
+                    displayTitle = `${matchedVehicle.i} (${matchedVehicle.r})`;
+                }
+
+                orderDisplay.textContent = displayTitle;
+                headerBadge.textContent = displayTitle;
                 headerBadge.classList.remove('hidden');
                 renderPartsList();
             }
@@ -473,6 +501,34 @@
             updateUI();
         }
 
+        // LOGIK FÖR CHAUFFÖRSNAMN (OKÄNDA FORDON)
+        window.showDriverNameModal = function(orderNo) {
+            pendingUnknownOrder = orderNo;
+            document.getElementById('driver-name-input').value = ''; 
+            document.getElementById('driver-name-modal').classList.remove('hidden');
+            document.getElementById('driver-name-modal').classList.add('flex');
+            lucide.createIcons();
+        };
+
+        window.closeDriverNameModal = function() {
+            pendingUnknownOrder = null;
+            document.getElementById('driver-name-modal').classList.add('hidden');
+            document.getElementById('driver-name-modal').classList.remove('flex');
+        };
+
+        window.confirmDriverName = function() {
+            const nameInput = document.getElementById('driver-name-input').value.trim();
+            if (nameInput === '') {
+                window.showToast('Du måste ange ditt namn', 'error');
+                return;
+            }
+            driverNameForUnknownVehicle = nameInput;
+            const orderToLoad = pendingUnknownOrder;
+            window.closeDriverNameModal();
+            orderInput.value = '';
+            loadOrder(orderToLoad);
+        };
+
         window.setManualOrder = function() {
             const val = orderInput.value;
             if (val.trim() === '') { window.showToast('Du måste ange ett id (t.ex. regnr)', 'error'); return; }
@@ -482,7 +538,20 @@
                 const match = cleanedForAo.match(/^(?:AO)?(\d{2})(\d+)$/);
                 if (match) formattedOrder = `AO-${match[1]}-${match[2]}`;
             }
-            orderInput.value = ''; loadOrder(formattedOrder);
+            
+            // Kolla om fordonet existerar i registret
+            const exists = vehicleDatabase.some(v => 
+                (v.r && v.r.toUpperCase() === formattedOrder) || 
+                (v.i && v.i.toUpperCase() === formattedOrder)
+            );
+
+            if (exists) {
+                orderInput.value = ''; 
+                loadOrder(formattedOrder);
+            } else {
+                // Om det inte finns, fäll upp namnrutan istället för att starta direkt!
+                window.showDriverNameModal(formattedOrder);
+            }
         };
 
         function parsePartNumber(rawInput) {
@@ -548,7 +617,9 @@
         window.forceClearOrder = function() { window.closeUnsavedModal(); clearOrder(); };
 
         function clearOrder() {
-            currentOrderNo = null; scannedParts = []; orderFinishedCb.checked = false; hasUnsavedChanges = false; updateUI();
+            currentOrderNo = null; scannedParts = []; orderFinishedCb.checked = false; hasUnsavedChanges = false; 
+            driverNameForUnknownVehicle = null; // Rensa eventuellt förarenamn vid stängning
+            updateUI();
         }
 
         window.finishOrder = async function() {
@@ -564,14 +635,23 @@
                 const uniqueDocId = `${currentOrderNo}-${Date.now()}`;
                 const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', uniqueDocId);
                 
-                await setDoc(orderRef, {
+                // Grunddata som sparas
+                const orderData = {
                     orderId: currentOrderNo,
                     parts: scannedParts,
                     isFinished: isFinished,
                     savedBy: currentUser.uid,
                     timestamp: new Date().toISOString(),
                     source: 'chauffor' 
-                });
+                };
+
+                // Om det var ett okänt fordon, lägg till namnet i databasen
+                if (driverNameForUnknownVehicle) {
+                    orderData.driverName = driverNameForUnknownVehicle;
+                    orderData.isUnknownVehicle = true;
+                }
+                
+                await setDoc(orderRef, orderData);
 
                 hasUnsavedChanges = false;
                 window.showToast('Artiklar inskickade!', 'success');

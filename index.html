@@ -578,8 +578,18 @@
                 uiStepOrder.classList.add('hidden'); uiStepOrder.classList.remove('flex');
                 uiStepParts.classList.remove('hidden'); uiStepParts.classList.add('flex');
                 
-                orderDisplay.textContent = currentOrderNo;
-                headerBadge.textContent = currentOrderNo;
+                // Slå upp om vi har både Internnr och Regnr för att visa en tydligare titel
+                let displayTitle = currentOrderNo;
+                const matchedVehicle = vehicleDatabase.find(v => 
+                    (v.i && v.i.toUpperCase() === currentOrderNo.toUpperCase()) || 
+                    (v.r && v.r.toUpperCase() === currentOrderNo.toUpperCase())
+                );
+                if (matchedVehicle && matchedVehicle.i && matchedVehicle.r) {
+                    displayTitle = `${matchedVehicle.i} (${matchedVehicle.r})`;
+                }
+                
+                orderDisplay.textContent = displayTitle;
+                headerBadge.textContent = displayTitle;
                 headerBadge.classList.remove('hidden');
                 renderPartsList();
             }
@@ -844,6 +854,16 @@
                     partsHtml += `</ul>`;
                 } else { partsHtml = `<div class="text-sm text-slate-400 mt-2 italic">Inga delar registrerade</div>`; }
 
+                // Slå upp fordonet för att visa både regnr och internnr i kortets titel
+                let displayOrderId = order.orderId;
+                const matchedVehicle = vehicleDatabase.find(v => 
+                    (v.i && v.i.toUpperCase() === order.orderId.toUpperCase()) || 
+                    (v.r && v.r.toUpperCase() === order.orderId.toUpperCase())
+                );
+                if (matchedVehicle && matchedVehicle.i && matchedVehicle.r) {
+                    displayOrderId = `${matchedVehicle.i} <span class="text-sm text-slate-500 font-medium ml-1">(${matchedVehicle.r})</span>`;
+                }
+
                 const actionBtnHtml = adminTab === 'ACTIVE'
                     ? `<button onclick="window.attemptArchive('${order.docId}', '${order.orderId}')" class="text-slate-400 hover:text-blue-600 transition-colors bg-slate-50 hover:bg-blue-50 p-1.5 rounded-lg" title="Arkivera"><i data-lucide="archive" class="w-5 h-5"></i></button>`
                     : `<button onclick="window.restoreOrder('${order.docId}')" class="text-slate-400 hover:text-green-600 transition-colors bg-slate-50 hover:bg-green-50 p-1.5 rounded-lg" title="Återställ"><i data-lucide="archive-restore" class="w-5 h-5"></i></button>`;
@@ -854,7 +874,7 @@
                     <div class="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
                         <div>
                             <div class="flex items-center gap-2">
-                                <h3 class="font-bold text-lg text-slate-800">${order.orderId}</h3>
+                                <h3 class="font-bold text-lg text-slate-800">${displayOrderId}</h3>
                                 ${actionBtnHtml}
                             </div>
                             <div class="flex items-center gap-2 mt-1">

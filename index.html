@@ -836,7 +836,8 @@
             window.unsubCategories = onSnapshot(colRef, (snapshot) => {
                 categoriesData = [];
                 snapshot.forEach(doc => {
-                    categoriesData.push({ id: doc.id, name: doc.id, parts: doc.data().parts || [] });
+                    const data = doc.data();
+                    categoriesData.push({ id: doc.id, name: data.name || doc.id, parts: data.parts || [] });
                 });
                 if(currentMode === 'ADMIN' && adminTab === 'REGISTER') window.renderCategoriesAdmin();
             }, (error) => console.log("Kunde inte hämta kategorier", error));
@@ -949,36 +950,49 @@
         };
 
         window.promptCreateCategory = async function() {
+            if (!currentUser) { window.showToast('Väntar på serveranslutning...', 'error'); return; }
             const catName = prompt("Namn på ny kategori (t.ex. 'Belysning' eller 'Vätskor'):");
             if(!catName || catName.trim() === '') return;
-            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', catName.trim());
-            await setDoc(ref, { parts: [] });
-            window.showToast("Kategori skapad!", "success");
+            try {
+                const safeId = 'cat_' + Date.now();
+                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', safeId);
+                await setDoc(ref, { name: catName.trim(), parts: [] });
+                window.showToast("Kategori skapad!", "success");
+            } catch(e) {
+                console.error("Fel:", e);
+                window.showToast("Fel: " + e.message, "error");
+            }
         };
         
-        window.deleteCategory = async function(catName) {
-            if(!confirm(`Vill du verkligen ta bort kategorin ${catName}?`)) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', catName));
-            window.showToast("Kategori borttagen", "success");
+        window.deleteCategory = async function(catId) {
+            if(!confirm(`Vill du verkligen ta bort denna kategori?`)) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', catId));
+                window.showToast("Kategori borttagen", "success");
+            } catch(e) { window.showToast("Fel: " + e.message, "error"); }
         };
 
-        window.promptAddPartToCategory = async function(catName, defaultPart = '') {
-            const partNo = prompt(`Ange exakt artikelnummer att lägga till i ${catName}:`, defaultPart);
+        window.promptAddPartToCategory = async function(catId, defaultPart = '') {
+            const partNo = prompt(`Ange exakt artikelnummer att lägga till i kategorin:`, defaultPart);
             if(!partNo || partNo.trim() === '') return;
-            window.addPartToCategoryDirectly(catName, partNo);
+            window.addPartToCategoryDirectly(catId, partNo);
         };
 
-        window.addPartToCategoryDirectly = async function(catName, partNo) {
-            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', catName);
-            await updateDoc(ref, { parts: arrayUnion(partNo.trim().toUpperCase()) });
-            window.showToast("Artikel tillagd i snabbval!", "success");
+        window.addPartToCategoryDirectly = async function(catId, partNo) {
+            try {
+                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', catId);
+                await updateDoc(ref, { parts: arrayUnion(partNo.trim().toUpperCase()) });
+                window.showToast("Artikel tillagd i snabbval!", "success");
+            } catch(e) { window.showToast("Fel: " + e.message, "error"); }
         };
 
-        window.removePartFromCategory = async function(catName, partNo) {
-            if(!confirm(`Ta bort ${partNo} från ${catName}?`)) return;
-            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', catName);
-            await updateDoc(ref, { parts: arrayRemove(partNo) });
-            window.showToast("Artikel borttagen", "success");
+        window.removePartFromCategory = async function(catId, partNo) {
+            if(!confirm(`Ta bort ${partNo} från denna kategori?`)) return;
+            try {
+                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', catId);
+                await updateDoc(ref, { parts: arrayRemove(partNo) });
+                window.showToast("Artikel borttagen", "success");
+            } catch(e) { window.showToast("Fel: " + e.message, "error"); }
         };
 
         function renderAdminView() {

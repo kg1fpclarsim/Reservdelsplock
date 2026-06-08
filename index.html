@@ -183,6 +183,11 @@
                         <span id="veh-status-badge" class="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold border border-slate-200">Laddar...</span>
                     </div>
                 </div>
+
+                <!-- NY: Snabbval & Kategorier (Chaufför) -->
+                <div id="admin-categories-ui" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <!-- Innehåll renderas via JS -->
+                </div>
             </div>
         </div>
     </main>
@@ -259,7 +264,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Säker, global funktion för notiser.
         function showToast(msg, type = 'info') {
@@ -293,7 +298,10 @@
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
-            if (currentUser && !window.unsubOrders) window.startGlobalOrdersListener();
+            if (currentUser && !window.unsubOrders) {
+                window.startGlobalOrdersListener();
+                window.startCategoriesListener();
+            }
         });
 
         // --- LÄS IN REGISTER (LOKALT FRÅN GITHUB, tvingar uppdatering via no-store) ---
@@ -307,6 +315,7 @@
                 document.getElementById('reg-status-badge').textContent = `${data.length} st`;
                 document.getElementById('reg-status-badge').className = "bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200";
                 window.generateLocationButtons(data); 
+                if (currentMode === 'ADMIN' && adminTab === 'REGISTER') window.renderCategoriesAdmin();
             }).catch(e => {
                 document.getElementById('reg-status-badge').textContent = "Saknas";
                 document.getElementById('reg-status-badge').className = "bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold border border-red-200";
@@ -327,16 +336,8 @@
         const orderInput = document.getElementById('manual-order-input');
         const orderDropdown = document.getElementById('order-autocomplete-dropdown');
 
-        // Hantera Kompakt Sökläge för Fordonsinmatning
-        orderInput.addEventListener('focus', () => {
-            document.body.classList.add('search-mode-active');
-        });
-
-        orderInput.addEventListener('blur', () => {
-            setTimeout(() => {
-                document.body.classList.remove('search-mode-active');
-            }, 200);
-        });
+        orderInput.addEventListener('focus', () => { document.body.classList.add('search-mode-active'); });
+        orderInput.addEventListener('blur', () => { setTimeout(() => { document.body.classList.remove('search-mode-active'); }, 200); });
 
         orderInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
@@ -425,16 +426,8 @@
         const partInput = document.getElementById('manual-part-input');
         const dropdown = document.getElementById('autocomplete-dropdown');
 
-        // Kompakt Sökläge: Lyssna på focus och blur
-        partInput.addEventListener('focus', () => {
-            document.body.classList.add('search-mode-active');
-        });
-
-        partInput.addEventListener('blur', () => {
-            setTimeout(() => {
-                document.body.classList.remove('search-mode-active');
-            }, 200);
-        });
+        partInput.addEventListener('focus', () => { document.body.classList.add('search-mode-active'); });
+        partInput.addEventListener('blur', () => { setTimeout(() => { document.body.classList.remove('search-mode-active'); }, 200); });
 
         partInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
@@ -481,7 +474,7 @@
                         window.addPartToList(match.a);
                         partInput.value = '';
                         dropdown.classList.add('hidden');
-                        partInput.blur(); // Stänger det kompakta läget
+                        partInput.blur(); 
                     };
                     dropdown.appendChild(div);
                 });
@@ -499,12 +492,14 @@
         let currentOrderDocId = null; 
         let scannedParts = []; 
         window.unsubOrders = null; 
+        window.unsubCategories = null;
         let itemToDelete = null; 
         let orderToArchive = null; 
         let hasUnsavedChanges = false;
         let isInputSectionVisible = true; 
         let adminTab = 'ACTIVE'; 
         let allOrdersData = []; 
+        let categoriesData = [];
         let isOrdersLoaded = false; 
         let html5QrcodeScanner = null;
         let scanMode = null; 
@@ -533,6 +528,7 @@
         const archiveModalText = document.getElementById('archive-modal-text');
         const addPartSection = document.getElementById('add-part-section');
         const inputToggleIcon = document.getElementById('input-toggle-icon');
+        const adminCategoriesUi = document.getElementById('admin-categories-ui');
 
         lucide.createIcons();
 
@@ -557,6 +553,7 @@
                 viewToggleBtn.innerHTML = `<i data-lucide="wrench" class="w-4 h-4"></i><span id="view-toggle-text">Verkstadsvy</span>`;
                 lucide.createIcons();
                 if(adminTab !== 'REGISTER') renderAdminView();
+                else window.renderCategoriesAdmin();
             } else {
                 currentMode = 'SHOP';
                 uiAdmin.classList.add('hidden'); uiAdmin.classList.remove('flex');
@@ -578,7 +575,6 @@
                 uiStepOrder.classList.add('hidden'); uiStepOrder.classList.remove('flex');
                 uiStepParts.classList.remove('hidden'); uiStepParts.classList.add('flex');
                 
-                // Slå upp om vi har både Internnr och Regnr för att visa en tydligare titel
                 let displayTitle = currentOrderNo;
                 const matchedVehicle = vehicleDatabase.find(v => 
                     (v.i && v.i.toUpperCase() === currentOrderNo.toUpperCase()) || 
@@ -778,6 +774,8 @@
             }
         };
 
+        // --- ADMIN & KATEGORIER LOGIK ---
+        
         window.switchAdminTab = function(tab) {
             adminTab = tab;
             const tabActive = document.getElementById('tab-active');
@@ -792,6 +790,7 @@
                 tabRegister.className = "px-4 py-2 font-bold rounded-t-lg border-b-4 border-blue-600 text-blue-800 transition-colors shrink-0 flex items-center gap-1";
                 adminOrdersGrid.classList.add('hidden');
                 adminRegisterSection.classList.remove('hidden'); adminRegisterSection.classList.add('flex');
+                window.renderCategoriesAdmin();
             } else {
                 adminOrdersGrid.classList.remove('hidden'); adminOrdersGrid.classList.add('grid');
                 adminRegisterSection.classList.add('hidden'); adminRegisterSection.classList.remove('flex');
@@ -815,9 +814,161 @@
                 });
                 isOrdersLoaded = true; 
                 if(currentMode === 'ADMIN' && adminTab !== 'REGISTER') renderAdminView();
+                if(currentMode === 'ADMIN' && adminTab === 'REGISTER') window.renderCategoriesAdmin();
             }, (error) => { 
                 if(currentMode === 'ADMIN') adminOrdersGrid.innerHTML = `<div class="text-red-500 col-span-full">Kunde inte hämta data.</div>`; 
             });
+        };
+
+        window.startCategoriesListener = function() {
+            if (!currentUser) return;
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'categories');
+            window.unsubCategories = onSnapshot(colRef, (snapshot) => {
+                categoriesData = [];
+                snapshot.forEach(doc => {
+                    categoriesData.push({ id: doc.id, name: doc.id, parts: doc.data().parts || [] });
+                });
+                if(currentMode === 'ADMIN' && adminTab === 'REGISTER') window.renderCategoriesAdmin();
+            }, (error) => console.log("Kunde inte hämta kategorier", error));
+        };
+
+        window.renderCategoriesAdmin = function() {
+            const uiContainer = document.getElementById('admin-categories-ui');
+            if(!uiContainer) return;
+
+            let categoriesHtml = categoriesData.map(cat => {
+                const partsHtml = cat.parts.length === 0 
+                    ? `<div class="text-xs text-slate-400 italic mb-2">Inga artiklar inlagda</div>`
+                    : `<div class="flex flex-wrap gap-2 mb-3">` + cat.parts.map(p => {
+                        const art = articleDatabase.find(a => a.a === p);
+                        const name = art ? art.t : 'Okänd';
+                        return `<span class="bg-blue-50 border border-blue-200 text-blue-800 text-xs px-2 py-1 rounded flex items-center gap-1 shadow-sm">
+                            <strong>${p}</strong> <span class="max-w-[100px] truncate" title="${name}">${name}</span>
+                            <button onclick="window.removePartFromCategory('${cat.id}', '${p}')" class="text-red-500 hover:text-red-700 ml-1 bg-red-50 rounded-full p-0.5"><i data-lucide="x" class="w-3 h-3"></i></button>
+                        </span>`;
+                    }).join('') + `</div>`;
+
+                return `
+                <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h5 class="font-bold text-slate-800 text-md">${cat.name}</h5>
+                            <button onclick="window.deleteCategory('${cat.id}')" class="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 p-1.5 rounded-lg transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                        ${partsHtml}
+                    </div>
+                    <button onclick="window.promptAddPartToCategory('${cat.id}')" class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 text-xs font-bold flex items-center gap-1 w-max px-2 py-1.5 rounded transition-colors mt-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Lägg till artikel
+                    </button>
+                </div>`;
+            }).join('');
+
+            if(categoriesData.length === 0) categoriesHtml = `<div class="text-slate-500 text-sm italic col-span-full">Inga kategorier skapade ännu. Välj 'Ny Kategori' ovan.</div>`;
+
+            // Heta artiklar
+            const counts = {};
+            allOrdersData.forEach(o => {
+                if (o.source === 'chauffor' && o.parts) {
+                    o.parts.forEach(p => { counts[p.partNo] = (counts[p.partNo] || 0) + p.qty; });
+                }
+            });
+            const existingParts = new Set();
+            categoriesData.forEach(c => (c.parts || []).forEach(p => existingParts.add(p)));
+            
+            const hot = Object.entries(counts)
+                .filter(([partNo]) => !existingParts.has(partNo))
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            let hotItemsHtml = hot.length === 0 
+                ? `<div class="text-slate-500 text-sm italic p-2">Samlar data... Inga nya förslag just nu.</div>`
+                : hot.map(([partNo, qty]) => {
+                    const art = articleDatabase.find(a => a.a === partNo);
+                    const name = art ? art.t : 'Okänd artikel';
+                    const catOptions = categoriesData.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                    
+                    return `
+                    <div class="flex justify-between items-center p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-slate-800 text-sm flex items-center gap-1"><i data-lucide="trending-up" class="w-3 h-3 text-green-500"></i> ${partNo}</span>
+                            <span class="text-xs text-slate-500 truncate max-w-[150px]">${name}</span>
+                            <span class="text-[10px] text-blue-500 font-semibold mt-0.5 bg-blue-50 w-max px-1.5 rounded">Plockad ${qty} st</span>
+                        </div>
+                        ${categoriesData.length > 0 ? `
+                        <select onchange="if(this.value) { window.addPartToCategoryDirectly(this.value, '${partNo}'); this.value=''; }" class="text-xs font-bold text-slate-600 border border-slate-300 rounded-lg p-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                            <option value="">Lägg till i...</option>
+                            ${catOptions}
+                        </select>
+                        ` : `<span class="text-[10px] text-slate-400">Skapa kategori först</span>`}
+                    </div>`;
+                }).join('');
+
+            uiContainer.innerHTML = `
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-slate-100 pb-4 gap-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="star" class="w-6 h-6 text-yellow-500"></i> Snabbval & Kategorier
+                        </h3>
+                        <p class="text-slate-500 text-sm mt-1">Dessa kategorier syns direkt som "Vanliga artiklar" i Chaufförs-appen.</p>
+                    </div>
+                    <button onclick="window.promptCreateCategory()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-sm shrink-0">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Ny Kategori
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2">
+                        <h4 class="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wide">Dina Kategorier</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${categoriesHtml}
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+                        <h4 class="font-bold text-slate-700 mb-2 flex items-center gap-2">
+                            <i data-lucide="flame" class="w-5 h-5 text-orange-500"></i> Heta förslag
+                        </h4>
+                        <p class="text-xs text-slate-500 mb-4">De mest plockade artiklarna av chaufförer, som inte ligger i något snabbval.</p>
+                        <div class="space-y-3">
+                            ${hotItemsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+        };
+
+        window.promptCreateCategory = async function() {
+            const catName = prompt("Namn på ny kategori (t.ex. 'Belysning' eller 'Vätskor'):");
+            if(!catName || catName.trim() === '') return;
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', catName.trim());
+            await setDoc(ref, { parts: [] });
+            window.showToast("Kategori skapad!", "success");
+        };
+        
+        window.deleteCategory = async function(catName) {
+            if(!confirm(`Vill du verkligen ta bort kategorin ${catName}?`)) return;
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', catName));
+            window.showToast("Kategori borttagen", "success");
+        };
+
+        window.promptAddPartToCategory = async function(catName, defaultPart = '') {
+            const partNo = prompt(`Ange exakt artikelnummer att lägga till i ${catName}:`, defaultPart);
+            if(!partNo || partNo.trim() === '') return;
+            window.addPartToCategoryDirectly(catName, partNo);
+        };
+
+        window.addPartToCategoryDirectly = async function(catName, partNo) {
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', catName);
+            await updateDoc(ref, { parts: arrayUnion(partNo.trim().toUpperCase()) });
+            window.showToast("Artikel tillagd i snabbval!", "success");
+        };
+
+        window.removePartFromCategory = async function(catName, partNo) {
+            if(!confirm(`Ta bort ${partNo} från ${catName}?`)) return;
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'categories', catName);
+            await updateDoc(ref, { parts: arrayRemove(partNo) });
+            window.showToast("Artikel borttagen", "success");
         };
 
         function renderAdminView() {

@@ -98,6 +98,11 @@
                         <i data-lucide="plus" class="w-5 h-5"></i>
                         Lägg till i listan
                     </button>
+                    
+                    <!-- NY KNAPP: Snabbval -->
+                    <button onclick="window.openFavoritesModal()" class="w-full bg-yellow-100 text-yellow-800 rounded-xl py-3 font-bold text-lg hover:bg-yellow-200 active:bg-yellow-300 transition-colors shadow-sm flex items-center justify-center gap-2 mt-2 border border-yellow-300">
+                        <i data-lucide="star" class="w-5 h-5"></i> Vanliga artiklar
+                    </button>
                 </div>
             </div>
 
@@ -124,6 +129,19 @@
         </div>
     </main>
 
+    <!-- MODAL FÖR SNABBVAL / KATEGORIER -->
+    <div id="favorites-modal" class="hidden fixed inset-0 bg-slate-900/80 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[85vh] overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-yellow-50 rounded-t-2xl shrink-0">
+                <h3 class="font-bold text-yellow-900 text-lg flex items-center gap-2"><i data-lucide="star" class="w-5 h-5"></i> Vanliga artiklar</h3>
+                <button onclick="window.closeFavoritesModal()" class="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-lg"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="overflow-y-auto flex-grow" id="favorites-accordion">
+                <!-- Accordion fylls av JS -->
+            </div>
+        </div>
+    </div>
+
     <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all">
             <div class="flex items-center gap-3 text-red-600 mb-4"><div class="bg-red-100 p-2 rounded-full text-red-600"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div><h3 class="text-xl font-bold text-slate-800">Ta bort artikel?</h3></div>
@@ -149,7 +167,6 @@
         </div>
     </div>
 
-    <!-- NY MODAL FÖR OKÄNT FORDON / CHAUFFÖRSNAMN -->
     <div id="driver-name-modal" class="hidden fixed inset-0 bg-slate-900/60 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm transform transition-all border-t-8 border-indigo-500">
             <div class="flex items-center gap-3 text-indigo-600 mb-3">
@@ -171,8 +188,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.showToast = function(msg, type = 'info') {
             const toast = document.getElementById('toast');
@@ -184,7 +201,7 @@
             setTimeout(() => toast.classList.add('translate-y-[150%]'), 3000);
         };
 
-        const firebaseConfig = {
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
             authDomain: "smalands-logistik-verkstad.firebaseapp.com",
             projectId: "smalands-logistik-verkstad",
@@ -196,13 +213,36 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = 'smalands-logistik-verkstad';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'smalands-logistik-verkstad';
 
         let currentUser = null;
-        const initAuth = async () => { try { await signInAnonymously(auth); } catch (err) {} };
+        let categoriesData = []; // NYTT FÖR KATEGORIER
+        
+        const initAuth = async () => { 
+            try { 
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth); 
+                }
+            } catch (err) {
+                console.error("Auth init error:", err);
+            } 
+        };
         initAuth();
 
-        onAuthStateChanged(auth, (user) => { currentUser = user; });
+        onAuthStateChanged(auth, (user) => { 
+            currentUser = user; 
+            if(currentUser) {
+                // NYTT: Hämta kategorier / snabbval från admin-appen
+                onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'categories'), (snap) => {
+                    categoriesData = [];
+                    snap.forEach(doc => categoriesData.push({ id: doc.id, name: doc.id, parts: doc.data().parts || [] }));
+                }, (error) => {
+                    console.error("Fel vid inläsning av kategorier:", error);
+                });
+            }
+        });
 
         // --- LÄS IN ARTIKEL & FORDON-REGISTER ---
         let articleDatabase = [];
@@ -225,16 +265,8 @@
         const orderInput = document.getElementById('manual-order-input');
         const orderDropdown = document.getElementById('order-autocomplete-dropdown');
 
-        // Hantera Kompakt Sökläge för Fordonsinmatning
-        orderInput.addEventListener('focus', () => {
-            document.body.classList.add('search-mode-active');
-        });
-
-        orderInput.addEventListener('blur', () => {
-            setTimeout(() => {
-                document.body.classList.remove('search-mode-active');
-            }, 200);
-        });
+        orderInput.addEventListener('focus', () => { document.body.classList.add('search-mode-active'); });
+        orderInput.addEventListener('blur', () => { setTimeout(() => { document.body.classList.remove('search-mode-active'); }, 200); });
 
         orderInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
@@ -323,16 +355,8 @@
         const partInput = document.getElementById('manual-part-input');
         const dropdown = document.getElementById('autocomplete-dropdown');
 
-        // Kompakt Sökläge: Lyssna på focus och blur
-        partInput.addEventListener('focus', () => {
-            document.body.classList.add('search-mode-active');
-        });
-
-        partInput.addEventListener('blur', () => {
-            setTimeout(() => {
-                document.body.classList.remove('search-mode-active');
-            }, 200);
-        });
+        partInput.addEventListener('focus', () => { document.body.classList.add('search-mode-active'); });
+        partInput.addEventListener('blur', () => { setTimeout(() => { document.body.classList.remove('search-mode-active'); }, 200); });
 
         partInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
@@ -405,8 +429,8 @@
         let scannedParts = []; 
         let itemToDelete = null; 
         let hasUnsavedChanges = false;
-        let driverNameForUnknownVehicle = null; // Håller koll på namnet för okända bilar
-        let pendingUnknownOrder = null; // Tillfälligt sparad order i väntan på namn
+        let driverNameForUnknownVehicle = null; 
+        let pendingUnknownOrder = null; 
 
         const uiMain = document.getElementById('main-ui');
         const uiStepOrder = document.getElementById('step-order');
@@ -432,7 +456,6 @@
                 uiStepOrder.classList.add('hidden'); uiStepOrder.classList.remove('flex');
                 uiStepParts.classList.remove('hidden'); uiStepParts.classList.add('flex');
                 
-                // Slå upp om vi har både Internnr och Regnr för att visa en tydligare titel
                 let displayTitle = currentOrderNo;
                 const matchedVehicle = vehicleDatabase.find(v => 
                     (v.i && v.i.toUpperCase() === currentOrderNo.toUpperCase()) || 
@@ -539,7 +562,6 @@
                 if (match) formattedOrder = `AO-${match[1]}-${match[2]}`;
             }
             
-            // Kolla om fordonet existerar i registret
             const exists = vehicleDatabase.some(v => 
                 (v.r && v.r.toUpperCase() === formattedOrder) || 
                 (v.i && v.i.toUpperCase() === formattedOrder)
@@ -549,7 +571,6 @@
                 orderInput.value = ''; 
                 loadOrder(formattedOrder);
             } else {
-                // Om det inte finns, fäll upp namnrutan istället för att starta direkt!
                 window.showDriverNameModal(formattedOrder);
             }
         };
@@ -587,6 +608,83 @@
         partInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.addManualPart(); });
         orderInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') window.setManualOrder(); });
 
+        // --- SNABBVAL / ACCORDION LOGIK ---
+        
+        window.openFavoritesModal = function() {
+            const container = document.getElementById('favorites-accordion');
+            
+            if (categoriesData.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-slate-500 italic flex flex-col items-center gap-2">
+                    <i data-lucide="package-open" class="w-8 h-8 opacity-50"></i>
+                    Inga vanliga artiklar inlagda ännu.
+                </div>`;
+            } else {
+                container.innerHTML = categoriesData.map(cat => {
+                    let partsHtml = cat.parts.map(p => {
+                        const art = articleDatabase.find(a => a.a === p);
+                        const name = art ? art.t : 'Okänd artikel';
+                        return `
+                        <div onclick="window.addFavoritePart('${p}')" class="p-4 border-b border-slate-200 last:border-0 hover:bg-indigo-100 active:bg-indigo-200 cursor-pointer flex justify-between items-center transition-colors">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-slate-800 text-base">${p}</span>
+                                <span class="text-sm text-slate-500 truncate max-w-[200px]">${name}</span>
+                            </div>
+                            <div class="bg-white p-2 rounded-full shadow-sm border border-slate-100">
+                                <i data-lucide="plus" class="w-5 h-5 text-indigo-600"></i>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                    if(cat.parts.length === 0) partsHtml = `<div class="p-4 text-sm text-slate-400 italic">Inga artiklar i denna kategori</div>`;
+
+                    return `
+                    <div class="border-b border-slate-200 bg-white">
+                        <button onclick="window.toggleAccordion('${cat.id}')" class="w-full p-5 flex justify-between items-center hover:bg-slate-50 active:bg-slate-100 transition-colors">
+                            <span class="font-bold text-slate-800 text-lg">${cat.name}</span>
+                            <i data-lucide="chevron-down" id="icon-${cat.id}" class="w-6 h-6 text-slate-400 transition-transform"></i>
+                        </button>
+                        <div id="content-${cat.id}" class="hidden flex-col bg-slate-50 border-t border-slate-100">
+                            ${partsHtml}
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+            
+            lucide.createIcons();
+            document.getElementById('favorites-modal').classList.remove('hidden');
+            document.getElementById('favorites-modal').classList.add('flex');
+        };
+
+        window.closeFavoritesModal = function() {
+            document.getElementById('favorites-modal').classList.add('hidden');
+            document.getElementById('favorites-modal').classList.remove('flex');
+        };
+
+        window.toggleAccordion = function(id) {
+            const content = document.getElementById(`content-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
+            const isHidden = content.classList.contains('hidden');
+            
+            // Stäng alla andra för en ren dragspels-effekt
+            categoriesData.forEach(c => {
+                document.getElementById(`content-${c.id}`)?.classList.add('hidden');
+                document.getElementById(`content-${c.id}`)?.classList.remove('flex');
+                document.getElementById(`icon-${c.id}`)?.classList.remove('rotate-180');
+            });
+            
+            if (isHidden) {
+                // Öppna den man klickade på
+                content.classList.remove('hidden');
+                content.classList.add('flex');
+                icon.classList.add('rotate-180');
+            }
+        };
+
+        window.addFavoritePart = function(partNo) {
+            window.addPartToList(partNo);
+            window.closeFavoritesModal();
+        };
+
         window.changeQty = function(index, delta) {
             const newQty = scannedParts[index].qty + delta;
             if (newQty > 0) { scannedParts[index].qty = newQty; window.markUnsaved(); updateUI(); } 
@@ -618,7 +716,7 @@
 
         function clearOrder() {
             currentOrderNo = null; scannedParts = []; orderFinishedCb.checked = false; hasUnsavedChanges = false; 
-            driverNameForUnknownVehicle = null; // Rensa eventuellt förarenamn vid stängning
+            driverNameForUnknownVehicle = null; 
             updateUI();
         }
 
@@ -635,7 +733,6 @@
                 const uniqueDocId = `${currentOrderNo}-${Date.now()}`;
                 const orderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', uniqueDocId);
                 
-                // Grunddata som sparas
                 const orderData = {
                     orderId: currentOrderNo,
                     parts: scannedParts,
@@ -645,7 +742,6 @@
                     source: 'chauffor' 
                 };
 
-                // Om det var ett okänt fordon, lägg till namnet i databasen
                 if (driverNameForUnknownVehicle) {
                     orderData.driverName = driverNameForUnknownVehicle;
                     orderData.isUnknownVehicle = true;

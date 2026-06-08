@@ -263,7 +263,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Säker, global funktion för notiser.
@@ -278,7 +278,7 @@
         }
         window.showToast = showToast;
 
-        const firebaseConfig = {
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
             apiKey: "AIzaSyDdzRwnqZZmI-IKEqGFX6t-SlaogHFnYEA",
             authDomain: "smalands-logistik-verkstad.firebaseapp.com",
             projectId: "smalands-logistik-verkstad",
@@ -290,10 +290,20 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = 'smalands-logistik-verkstad';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'smalands-logistik-verkstad';
 
         let currentUser = null;
-        const initAuth = async () => { try { await signInAnonymously(auth); } catch (err) {} };
+        const initAuth = async () => { 
+            try { 
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth); 
+                }
+            } catch (err) {
+                console.error("Auth init error:", err);
+            } 
+        };
         initAuth();
 
         onAuthStateChanged(auth, (user) => {

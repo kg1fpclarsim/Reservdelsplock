@@ -237,9 +237,10 @@
                 // NYTT: Hämta kategorier / snabbval från admin-appen
                 onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'categories'), (snap) => {
                     categoriesData = [];
-                    snap.forEach(doc => categoriesData.push({ id: doc.id, name: doc.id, parts: doc.data().parts || [] }));
-                }, (error) => {
-                    console.error("Fel vid inläsning av kategorier:", error);
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        categoriesData.push({ id: doc.id, name: data.name || doc.id, parts: data.parts || [] });
+                    });
                 });
             }
         });

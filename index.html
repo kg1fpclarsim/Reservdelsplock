@@ -1085,16 +1085,16 @@
                     let warehouseRowIndex = -1;
                     
                     for (let i = 0; i < Math.min(10, data.length); i++) {
-                        if (data[i].some(col => col && col.trim() === "Art.nr.")) { 
-                            headerIndex = i; 
-                            fileType = 'articles'; 
-                            warehouseRowIndex = i - 1; 
-                            break; 
+                        if (data[i].some(col => col && (col.trim() === "Art.nr." || col.trim() === "Artikelnummer"))) {
+                            headerIndex = i;
+                            fileType = 'articles';
+                            warehouseRowIndex = i - 1;
+                            break;
                         }
-                        if (data[i].some(col => col && col.trim() === "Reg.nr")) { 
-                            headerIndex = i; 
-                            fileType = 'vehicles'; 
-                            break; 
+                        if (data[i].some(col => col && col.trim() === "Reg.nr")) {
+                            headerIndex = i;
+                            fileType = 'vehicles';
+                            break;
                         }
                     }
 
@@ -1105,13 +1105,14 @@
                     let fileNameToSave = "";
 
                     if (fileType === 'articles') {
-                        const artNrIdx = headers.indexOf("Art.nr.");
+                        const artNrIdx = headers.indexOf("Art.nr.") !== -1 ? headers.indexOf("Art.nr.") : headers.indexOf("Artikelnummer");
                         const titelIdx = headers.indexOf("Titel");
                         const tillverkareIdx = headers.indexOf("Tillverkare");
-                        
+                        const beskrivningIdx = headers.indexOf("Beskrivning");
+
                         const warehouseColumns = [];
                         const warehouseNames = data[warehouseRowIndex];
-                        
+
                         if (warehouseRowIndex >= 0 && warehouseNames) {
                             headers.forEach((header, index) => {
                                 if (header && header.trim() === "Lagersaldo") {
@@ -1124,24 +1125,36 @@
                             });
                         }
 
+                        // Vissa exportformat (t.ex. Fortnox-export) saknar separata "Lagersaldo"-kolumner
+                        // med lagernamn på raden ovanför headern. Där ligger orten/lagret istället i
+                        // "Beskrivning"-kolumnen som en kommaseparerad lista, t.ex. "ÅRYD, AHL, NYBRO".
+                        const useBeskrivningAsLocation = warehouseColumns.length === 0 && beskrivningIdx !== -1;
+
                         for (let i = headerIndex + 1; i < data.length; i++) {
                             const row = data[i];
                             const a = row[artNrIdx] ? row[artNrIdx].trim() : "";
                             const t = row[titelIdx] ? row[titelIdx].trim() : "";
                             const m = row[tillverkareIdx] ? row[tillverkareIdx].trim() : "";
-                            
+
                             let locationsArray = [];
-                            warehouseColumns.forEach(col => {
-                                const saldo = row[col.index];
-                                if (saldo && /[0-9]/.test(saldo)) {
-                                    locationsArray.push(col.name);
+                            if (useBeskrivningAsLocation) {
+                                const rawLoc = row[beskrivningIdx] ? row[beskrivningIdx].trim() : "";
+                                if (rawLoc !== "") {
+                                    locationsArray = rawLoc.split(',').map(l => l.trim()).filter(l => l !== "");
                                 }
-                            });
+                            } else {
+                                warehouseColumns.forEach(col => {
+                                    const saldo = row[col.index];
+                                    if (saldo && /[0-9]/.test(saldo)) {
+                                        locationsArray.push(col.name);
+                                    }
+                                });
+                            }
 
                             if (a !== "") items.push({ a, t, m, b: locationsArray });
                         }
                         fileNameToSave = "artiklar.json";
-                    } 
+                    }
                     else if (fileType === 'vehicles') {
                         const regNrIdx = headers.indexOf("Reg.nr");
                         const intNrIdx = headers.indexOf("Intern referens");
